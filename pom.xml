@@ -52,6 +52,10 @@
             <artifactId>vertx-mongo-client</artifactId>
             <version>${vertx.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-redis-client</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -88,7 +92,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>1.6.0</version>
                 <configuration>
-                    <mainClass>org.idle.easy.fibers.Launcher</mainClass>
+                    <mainClass>org.idle.easy.fibers.AppLauncher</mainClass>
                     <workingDirectory>target/classes</workingDirectory>
                     <executable>java</executable>
                     <arguments>

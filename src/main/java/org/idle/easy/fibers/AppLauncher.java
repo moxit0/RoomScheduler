@@ -4,7 +4,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
-public class Launcher {
+public class AppLauncher {
     private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
 
     public static void main(String[] args) {
