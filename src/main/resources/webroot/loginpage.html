@@ -2,9 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>$Title$</title>
+    <title>Login</title>
+    <link href="webroot/css/bootstrap.min.css" type="text/css" media="all" rel="stylesheet" />
+  <link href="webroot/css/main.css" type="text/css" media="all" rel="stylesheet" />
+
+    <script src="webroot/js/jquery-2.1.1.min.js" ></script>
 </head>
 <body>
-$END$
+<div id="loggedOut">
+    <button type="button" id="googleRequestToken" class="btn btn-danger btn-large btn-block btn-auth">
+        <i class="fa fa-google-plus"></i>
+        <span>Sign in with Google</span>
+    </button>
+</div>
+<script language="JavaScript">
+    $(function () {
+        $('#googleRequestToken').click(function () {
+            window.location = "/googleauth";
+            return false;
+        });
+    });
+</script>
 </body>
 </html>

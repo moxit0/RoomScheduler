@@ -22,10 +22,7 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
-import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.CookieHandler;
-import io.vertx.ext.web.handler.CorsHandler;
-import io.vertx.ext.web.handler.ErrorHandler;
+import io.vertx.ext.web.handler.*;
 import io.vertx.redis.RedisClient;
 
 import java.util.List;
@@ -59,13 +56,26 @@ public class MainVerticle extends SyncVerticle {
                 .allowedHeader("Access-Control-Allow-Headers")
                 .allowedHeader("Content-Type"));
         router.route().handler(CookieHandler.create());
-        router.route().handler(BodyHandler.create()).failureHandler(ErrorHandler.create());
-        router.route(HttpMethod.GET, "/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
-        router.route(HttpMethod.GET, "/entities").handler(Sync.fiberHandler(this::getAllEntities));
-        router.route(HttpMethod.GET, "/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
-        router.route(HttpMethod.PUT, "/entities").handler(Sync.fiberHandler(this::saveNewEntity));
-        router.route(HttpMethod.GET, "/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
-        router.route(HttpMethod.GET, "/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
+        router.route().handler(BodyHandler.create());
+
+/*      String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
+        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
+        OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, clientId, clientSecret);
+        router.route().handler(SessionHandler.create(LocalSessionStore.create(vertx)));
+        router.route().handler(UserSessionHandler.create(oauth2Provider));
+        AuthHandler redirectAuthHandler = RedirectAuthHandler.create(oauth2Provider);
+        router.route("/*").handler(redirectAuthHandler);
+        router.post("/login").handler(FormLoginHandler.create(oauth2Provider));
+         */
+        router.route("/webroot/*").handler(StaticHandler.create());
+        router.route().failureHandler(ErrorHandler.create());
+        router.routeWithRegex( "\\/.*").handler(Sync.fiberHandler(this::authenticate));
+        router.get("/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
+        router.get("/entities").handler(Sync.fiberHandler(this::getAllEntities));
+        router.get("/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
+        router.put("/entities").handler(Sync.fiberHandler(this::saveNewEntity));
+        router.get("/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
+        router.get("/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
         // HttpServer will be automatically shared if port matches
         server.requestHandler(router::accept).listen(8088);
         webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
@@ -107,17 +117,21 @@ public class MainVerticle extends SyncVerticle {
                 .end(responseContent);
     }
 
+    private void authenticate(RoutingContext routingContext){
+        Cookie cookie = routingContext.getCookie("roomScheduler");
+        if (cookie == null && !"/googleauth".equals(routingContext.request().path()) && !"/googletoken".equals(routingContext.request().path())) {
+            routingContext.response().sendFile("webroot/loginpage.html");
+            return;
+        }else{
+//            logger.info("cookie encode: {0} \n value: {1}", cookie.encode(), cookie.getValue());
+//            String decryptedCookie = cookieCipher.decryptCookie(cookie.getValue());
+//            logger.info("decryptedCookie: {0} ", decryptedCookie);
+            routingContext.next();
+        }
+    }
+
     @Suspendable
     private void startGoogleAuth(RoutingContext routingContext) {
-        Cookie cookie = routingContext.getCookie("roomScheduler");
-        if (cookie != null) {
-            logger.info("cookie encode: {0} \n value: {1}", cookie.encode(), cookie.getValue());
-            String decryptedCookie = cookieCipher.decryptCookie(cookie.getValue());
-            logger.info("decryptedCookie: {0} ", decryptedCookie);
-            routingContext.response()
-                    .setStatusCode(200)
-                    .end("Authenticated");
-        }else{
             String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
             String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
 
@@ -138,7 +152,6 @@ public class MainVerticle extends SyncVerticle {
                     .putHeader("Location", authorization_uri)
                     .setStatusCode(302)
                     .end();
-        }
     }
 
     @Suspendable
