@@ -66,15 +66,16 @@ public class MainVerticle extends SyncVerticle {
         router.route("/*").handler(redirectAuthHandler);
         router.post("/login").handler(FormLoginHandler.create(oauth2Provider));
          */
-        router.route("/webroot/*").handler(StaticHandler.create().setIndexPage("index.html"));
         router.route().failureHandler(ErrorHandler.create());
-        router.routeWithRegex( "\\/.*").handler(Sync.fiberHandler(this::authenticate));
-        router.get("/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
-        router.get("/entities").handler(Sync.fiberHandler(this::getAllEntities));
-        router.get("/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
-        router.put("/entities").handler(Sync.fiberHandler(this::saveNewEntity));
-        router.get("/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
-        router.get("/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
+        router.routeWithRegex( "/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
+//        router.route("/webroot/*").handler(StaticHandler.create().setIndexPage("index.html"));
+        router.get("/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
+        router.get("/api/entities").handler(Sync.fiberHandler(this::getAllEntities));
+        router.get("/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
+        router.put("/api/entities").handler(Sync.fiberHandler(this::saveNewEntity));
+        router.get("/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
+        router.get("/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
+        router.route("/*").handler(StaticHandler.create().setIndexPage("index.html"));
         // HttpServer will be automatically shared if port matches
         server.requestHandler(router::accept).listen(8088);
         webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
@@ -85,14 +86,15 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void saveNewEntity(RoutingContext routingContext) {
-        final String response = awaitResult(h -> mongoClient.save(COLLECTION_NAME, routingContext.getBodyAsJson(), h));
+//        final String response = awaitResult(h -> mongoClient.save(COLLECTION_NAME, routingContext.getBodyAsJson(), h));
+        final String response = routingContext.getBodyAsString();
         routingContext.response().end(response);
     }
 
     @Suspendable
     private void getAllEntities(RoutingContext routingContext) {
 //        final List<JsonObject> entities = Sync.awaitResult(h ->  mongoClient.find(COLLECTION_NAME, new JsonObject(), h));
-        final String item = "{\"calendarId\":\"#mycal\",\"title\":\"opaa\",\"scheduledRoom\":{\"id\":2,\"number\":1,\"type\":\"DOUBLE\",\"startDate\":\"2017-09-03T21:00:00.000Z\",\"endDate\":\"2017-09-03T21:00:00.000Z\",\"allDay\":true,\"agendaData\":null},\"backgroundColor\":\"#333333\",\"foregroundColor\":\"#ffffff\"}";
+        final String item = "{\"calendarId\":\"#mycal\",\"title\":\"opaa\",\"scheduledRoom\":{\"id\":2,\"number\":1,\"type\":\"DOUBLE\",\"startDate\":\"2017-09-21T21:00:00.000Z\",\"endDate\":\"2017-09-22T21:00:00.000Z\",\"allDay\":true,\"agendaData\":null},\"backgroundColor\":\"#333333\",\"foregroundColor\":\"#ffffff\"}";
         logger.info(item);
         routingContext.response().end(Json.encodePrettily(item));
     }
@@ -119,8 +121,11 @@ public class MainVerticle extends SyncVerticle {
 
     private void authenticate(RoutingContext routingContext){
         Cookie cookie = routingContext.getCookie("roomScheduler");
-        if (cookie == null && !"/googleauth".equals(routingContext.request().path()) && !"/googletoken".equals(routingContext.request().path())) {
-            routingContext.response().sendFile("webroot/loginpage.html");
+        if (cookie == null && !"/api/googleauth".equals(routingContext.request().path()) && !"/api/googletoken".equals(routingContext.request().path())) {
+            routingContext.response().putHeader("Location", "/index.html")
+                    .setStatusCode(302)
+                    .end();
+//            routingContext.response().sendFile("webroot/loginpage.html");
             return;
         }else{
 //            logger.info("cookie encode: {0} \n value: {1}", cookie.encode(), cookie.getValue());
@@ -137,7 +142,7 @@ public class MainVerticle extends SyncVerticle {
 
             OAuth2Auth oauth2 = GoogleAuth.create(vertx, clientId, clientSecret);
 
-            final String callbackUrl = "http://localhost:8088/googletoken";
+            final String callbackUrl = "http://localhost:8088/api/googletoken";
             // Authorization oauth2 URI
             String authorization_uri = oauth2.authorizeURL(new JsonObject()
                     .put("redirect_uri", callbackUrl)
@@ -160,7 +165,7 @@ public class MainVerticle extends SyncVerticle {
         String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
 
         OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, clientId, clientSecret);
-        final String callbackUrl = "http://localhost:8088/googletoken";
+        final String callbackUrl = "http://localhost:8088/api/googletoken";
 
         final JsonObject tokenConfig = new JsonObject()
                 .put("code", routingContext.request().getParam("code"))
@@ -180,10 +185,8 @@ public class MainVerticle extends SyncVerticle {
 
         Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
         routingContext.addCookie(cookie);
-        routingContext.response()
-                .putHeader("Location", "/index.html")
-                .setStatusCode(302)
-                .end();
+        routingContext.response().sendFile("webroot/index.html");
+        return;
     }
 
     private Cookie createCookie(String userId, String expiresAt, String accessToken) {
