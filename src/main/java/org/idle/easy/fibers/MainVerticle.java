@@ -1,7 +1,6 @@
 package org.idle.easy.fibers;
 
 import co.paralleluniverse.fibers.Suspendable;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
@@ -67,7 +66,7 @@ public class MainVerticle extends SyncVerticle {
         router.route("/*").handler(redirectAuthHandler);
         router.post("/login").handler(FormLoginHandler.create(oauth2Provider));
          */
-        router.route("/webroot/*").handler(StaticHandler.create());
+        router.route("/webroot/*").handler(StaticHandler.create().setIndexPage("index.html"));
         router.route().failureHandler(ErrorHandler.create());
         router.routeWithRegex( "\\/.*").handler(Sync.fiberHandler(this::authenticate));
         router.get("/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
@@ -109,12 +108,13 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getWebContent(RoutingContext routingContext) {
-        final HttpResponse<Buffer> response = awaitResult(h -> webClient.getAbs("https://www.google.com").send(h));
-        final String responseContent = response.bodyAsString("UTF-8");
-        logger.info("Result of Http request: {0}", responseContent);
+//        final HttpResponse<Buffer> response = awaitResult(h -> webClient.getAbs("https://www.google.com").send(h));
+//        final String responseContent = response.bodyAsString("UTF-8");
+//        logger.info("Result of Http request: {0}", responseContent);
         routingContext.response()
-                .putHeader(HttpHeaderNames.CONTENT_TYPE, "text/html")
-                .end(responseContent);
+                .putHeader("Location", "/webroot/index.html")
+                .setStatusCode(302)
+                .end();
     }
 
     private void authenticate(RoutingContext routingContext){
@@ -181,8 +181,9 @@ public class MainVerticle extends SyncVerticle {
         Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
         routingContext.addCookie(cookie);
         routingContext.response()
-                .putHeader("content-type", "application/json; charset=utf-8")
-                .end(Json.encodePrettily(p + " " + u));
+                .putHeader("Location", "/index.html")
+                .setStatusCode(302)
+                .end();
     }
 
     private Cookie createCookie(String userId, String expiresAt, String accessToken) {
