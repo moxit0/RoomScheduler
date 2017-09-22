@@ -129,7 +129,7 @@ $(document).ready(function () {
     //                     dataType: "json"
     //                 });
 
-    $.getJSON( "http://localhost:8089/entities", function( data ) {
+    $.getJSON( "http://localhost:8088/api/entities", function( data ) {
     	var item = JSON.parse(data);
     	console.log(item);
   jfcalplugin.addAgendaItem(item);
@@ -348,9 +348,9 @@ $(document).ready(function () {
                     var scheduledItem = new ScheduledItem("#mycal",  what, scheduledRoom, $("#colorBackground").val(), $("#colorForeground").val());
                     console.log(JSON.stringify(scheduledItem));
                     $.ajax({
-                        type: "POST",
-                        url: "http://localhost:8080/YourRoomsScheduler/service/scheduled/items",
-                        data: scheduledItem,
+                        type: "PUT",
+                        url: "http://localhost:8088/api/entities",
+                        data: JSON.stringify(scheduledItem),
                         success: function () {jfcalplugin.addAgendaItem(scheduledItem)},
                         error: function(err) {
                             alert(err.responseText);
