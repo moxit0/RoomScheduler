@@ -1,7 +1,7 @@
 body {
     color: #2d2d2b;
     background-color: #FFF;
-    background: url('../image/bgcloud.jpg') no-repeat center center fixed;
+    /*background: url('../image/bgcloud.jpg') no-repeat center center fixed; */
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;

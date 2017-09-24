@@ -129,11 +129,17 @@ $(document).ready(function () {
     //                     dataType: "json"
     //                 });
 
-    $.getJSON( "http://localhost:8088/api/entities", function( data ) {
-    	var item = JSON.parse(data);
-    	console.log(item);
-  jfcalplugin.addAgendaItem(item);
-});
+    $.getJSON( "http://localhost:8088/roomScheduler/api/entities", function(data) {
+        data.forEach(function(element) {
+            var item = JSON.parse(element);
+            console.log("get data: "+item)
+            var sdTs = item.scheduledRoom.startDate;
+            var edTs = item.scheduledRoom.startDate;
+            item.scheduledRoom.startDate= new Date(sdTs);
+            item.scheduledRoom.endDate= new Date(edTs);
+            jfcalplugin.addAgendaItem(item);
+        });
+    });
 
 
     /**
@@ -346,12 +352,16 @@ $(document).ready(function () {
 
                     var scheduledRoom = new ScheduledRoom(2, 1, "DOUBLE", startDateObj, endDateObj, true, null);
                     var scheduledItem = new ScheduledItem("#mycal",  what, scheduledRoom, $("#colorBackground").val(), $("#colorForeground").val());
-                    console.log(JSON.stringify(scheduledItem));
+                    var scheduledItemAsString = JSON.stringify(scheduledItem);
+                    console.log(scheduledItemAsString);
                     $.ajax({
                         type: "PUT",
-                        url: "http://localhost:8088/api/entities",
-                        data: JSON.stringify(scheduledItem),
-                        success: function () {jfcalplugin.addAgendaItem(scheduledItem)},
+                        url: "http://localhost:8088/roomScheduler/api/entities",
+//                        data: JSON.stringify(scheduledItem),
+                        data: scheduledItemAsString,
+                        success: function () {
+                            jfcalplugin.addAgendaItem(scheduledItem);
+                        },
                         error: function(err) {
                             alert(err.responseText);
                         },

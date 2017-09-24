@@ -3,28 +3,28 @@
     <head>
         <title>All Scheduled Rooms</title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <link rel="stylesheet" type="text/css" href="../css/frontierCalendar/jquery-frontier-cal-1.3.2.css" />
-        <link rel="stylesheet" type="text/css" href="../css/jquery-ui/smoothness/jquery-ui-1.8.1.custom.css" />
+        <link rel="stylesheet" type="text/css" href="css/frontierCalendar/jquery-frontier-cal-1.3.2.css" />
+        <link rel="stylesheet" type="text/css" href="css/jquery-ui/smoothness/jquery-ui-1.8.1.custom.css" />
         <!-- Include CSS for color picker plugin (Not required for calendar plugin. Used for example.) -->
-        <link rel="stylesheet" type="text/css" href="../css/colorpicker/colorpicker.css" />
-        <link href="../css/bootstrap.min.css" type="text/css" media="all" rel="stylesheet" />
-        <link href="../css/main.css" type="text/css" media="all" rel="stylesheet" />
+        <link rel="stylesheet" type="text/css" href="css/colorpicker/colorpicker.css" />
+        <link href="css/bootstrap.min.css" type="text/css" media="all" rel="stylesheet" />
+        <link href="css/main.css" type="text/css" media="all" rel="stylesheet" />
 
-        <script src="../js/jquery-core/jquery-1.4.2.min.js" ></script>
-        <script type="text/javascript" src="../js/jquery-core/jquery-1.4.2-ie-fix.min.js"></script>
-        <script type="text/javascript" src="../js/jquery-ui/smoothness/jquery-ui-1.8.1.custom.min.js"></script>
+        <script src="js/jquery-core/jquery-1.4.2.min.js" ></script>
+        <script type="text/javascript" src="js/jquery-core/jquery-1.4.2-ie-fix.min.js"></script>
+        <script type="text/javascript" src="js/jquery-ui/smoothness/jquery-ui-1.8.1.custom.min.js"></script>
         <!-- Include color picker plugin (Not required for calendar plugin. Used for example.) -->
-        <script type="text/javascript" src="../js/colorpicker/colorpicker.js"></script>
+        <script type="text/javascript" src="js/colorpicker/colorpicker.js"></script>
         <!-- Include jquery tooltip plugin (Not required for calendar plugin. Used for example.) -->
-        <script type="text/javascript" src="../js/jquery-qtip-1.0.0-rc3140944/jquery.qtip-1.0.js"></script>
+        <script type="text/javascript" src="js/jquery-qtip-1.0.0-rc3140944/jquery.qtip-1.0.js"></script>
         <!--
             ** jshashtable-2.1.js MUST BE INCLUDED BEFORE THE FRONTIER CALENDAR PLUGIN. **
         -->
-        <script type="text/javascript" src="../js/lib/jshashtable-2.1.js"></script>
-        <script type="text/javascript" src="../js/frontierCalendar/jquery-frontier-cal-1.3.2.js"></script>
-        <script type="text/javascript" src="../js/roomsScheduler/scheduledRoom.js"></script>
-        <script type="text/javascript" src="../js/roomsScheduler/scheduledItem.js"></script>
-        <script type="text/javascript" src="../js/roomsScheduler/roomsScheduler.js"></script>
+        <script type="text/javascript" src="js/lib/jshashtable-2.1.js"></script>
+        <script type="text/javascript" src="js/frontierCalendar/jquery-frontier-cal-1.3.2.js"></script>
+        <script type="text/javascript" src="js/roomsScheduler/scheduledRoom.js"></script>
+        <script type="text/javascript" src="js/roomsScheduler/scheduledItem.js"></script>
+        <script type="text/javascript" src="js/roomsScheduler/roomsScheduler.js"></script>
     </head>
     <body>
         <style type="text/css" media="screen">
@@ -239,7 +239,7 @@
         <script language="JavaScript">
             $(function () {
                 $('#googleRequestToken').click(function () {
-                    window.location = "/api/googleauth";
+                    window.location = "/roomScheduler/api/googleauth";
                     return false;
                 });
             });

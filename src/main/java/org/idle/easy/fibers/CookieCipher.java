@@ -70,7 +70,6 @@ public class CookieCipher {
 
     @Suspendable
     public String decryptCookie(String cookieValue) {
-        logger.info("cookie value: {0}", cookieValue);
         String decrypted = null;
         try {
             String decode = URLDecoder.decode(cookieValue, StandardCharsets.UTF_8.name());
@@ -89,7 +88,6 @@ public class CookieCipher {
         } catch (UnsupportedEncodingException e) {
             logger.error("Problem when decrypt UserContext from cookie", e);
         }
-        logger.info("cookie decrypted: {0}", decrypted);
         return decrypted;
     }
 }
