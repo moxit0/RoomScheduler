@@ -2,6 +2,7 @@ package org.idle.easy.fibers;
 
 import co.paralleluniverse.fibers.Suspendable;
 import io.vertx.core.Future;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
@@ -9,6 +10,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.auth.oauth2.AccessToken;
 import io.vertx.ext.auth.oauth2.OAuth2Auth;
 import io.vertx.ext.auth.oauth2.providers.GoogleAuth;
 import io.vertx.ext.mongo.MongoClient;
@@ -17,6 +19,7 @@ import io.vertx.ext.sync.SyncVerticle;
 import io.vertx.ext.web.Cookie;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.handler.*;
@@ -91,7 +94,8 @@ public class MainVerticle extends SyncVerticle {
         Instant startDate = scheduledRoom.getInstant("startDate");
         Instant endDate = scheduledRoom.getInstant("endDate");
         scheduledRoom.put("startDate", startDate).put("endDate", endDate);
-        long result = awaitResult(h -> redisClient.zadd("user:entry:"+userId, startDate.toEpochMilli(), entry.encodePrettily(), h));
+        Long ts = startDate.toEpochMilli();
+        long result = awaitResult(h -> redisClient.zadd(String.join(":", "user:entry:", userId, ts.toString()), ts, entry.encodePrettily(), h));
         logger.info("saveEntity: {0},\nresult: {1}", entry.encodePrettily(), result);
 
         routingContext.response().end(entry.encode());
@@ -116,8 +120,7 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getWebContent(RoutingContext routingContext) {
-        routingContext.response()
-                .putHeader("Location", "/webroot/index.html")
+        routingContext.response().putHeader("Location", "/roomScheduler/")
                 .setStatusCode(302)
                 .end();
     }
@@ -131,10 +134,9 @@ public class MainVerticle extends SyncVerticle {
                     .setStatusCode(302)
                     .end();
         }else{
-            cookie.setMaxAge(0);
-//            String decryptedCookie = cookieCipher.decryptCookie(cookie.getValue());
-//            routingContext.put("userId", decryptedCookie.split(":")[0]);
-//            logger.info("decryptedCookie: {0} ", decryptedCookie);
+            String decryptedCookie = cookieCipher.decryptCookie(cookie.getValue());
+            routingContext.put("userId", decryptedCookie.split(":")[0]);
+            logger.info("decryptedCookie: {0} ", decryptedCookie);
             routingContext.next();
         }
     }
@@ -163,30 +165,30 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getGoogleToken(RoutingContext routingContext) {
-//        String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
-//        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
-//
-//        OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, clientId, clientSecret);
-//        final String callbackUrl = "http://localhost:8088/roomScheduler/api/googletoken";
-//
-//        final JsonObject tokenConfig = new JsonObject()
-//                .put("code", routingContext.request().getParam("code"))
-//                .put("redirect_uri", callbackUrl);
-//
-//        final AccessToken token = awaitResult(h -> oauth2Provider.getToken(tokenConfig, h));
-//
-//        String uri = "https://www.googleapis.com/oauth2/v1/userinfo?v=2&oauth_token=" + token.principal().getValue("access_token");
-//        HttpResponse<Buffer> response = awaitResult(h -> webClient.getAbs(uri).send(h));
-//        JsonObject userInfo = response.bodyAsJsonObject();
-//        logger.info("AccessToken: {0}", Json.encodePrettily(token.principal()));
-//        logger.info("userInfo: {0}", Json.encodePrettily(userInfo));
-//        JsonObject principal = token.principal();
-//        final String userId = userInfo.getString("id");
-//        Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
-//        Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
-//
-//        Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
-//        routingContext.addCookie(cookie);
+        String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
+        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
+
+        OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, clientId, clientSecret);
+        final String callbackUrl = "http://localhost:8088/roomScheduler/api/googletoken";
+
+        final JsonObject tokenConfig = new JsonObject()
+                .put("code", routingContext.request().getParam("code"))
+                .put("redirect_uri", callbackUrl);
+
+        final AccessToken token = awaitResult(h -> oauth2Provider.getToken(tokenConfig, h));
+
+        String uri = "https://www.googleapis.com/oauth2/v1/userinfo?v=2&oauth_token=" + token.principal().getValue("access_token");
+        HttpResponse<Buffer> response = awaitResult(h -> webClient.getAbs(uri).send(h));
+        JsonObject userInfo = response.bodyAsJsonObject();
+        logger.info("AccessToken: {0}", Json.encodePrettily(token.principal()));
+        logger.info("userInfo: {0}", Json.encodePrettily(userInfo));
+        JsonObject principal = token.principal();
+        final String userId = userInfo.getString("id");
+        Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
+        Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
+
+        Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
+        routingContext.addCookie(cookie);
         routingContext.response().putHeader("Location", "/roomScheduler/")
                 .setStatusCode(302)
                 .end();
