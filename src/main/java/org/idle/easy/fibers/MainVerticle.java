@@ -131,7 +131,7 @@ public class MainVerticle extends SyncVerticle {
         String requestPath = routingContext.request().path();
         if (cookie == null && !"/roomScheduler/api/googleauth".equals(requestPath) && !"/roomScheduler/api/googletoken".equals(requestPath)) {
             routingContext.response().putHeader("Location", "/index.html")
-                    .setStatusCode(302)
+                    .setStatusCode(301)
                     .end();
         }else{
             String decryptedCookie = cookieCipher.decryptCookie(cookie.getValue());
@@ -190,7 +190,7 @@ public class MainVerticle extends SyncVerticle {
         Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
         routingContext.addCookie(cookie);
         routingContext.response().putHeader("Location", "/roomScheduler/")
-                .setStatusCode(302)
+                .setStatusCode(301)
                 .end();
     }
 

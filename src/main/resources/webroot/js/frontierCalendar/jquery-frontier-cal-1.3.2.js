@@ -3806,6 +3806,7 @@
                 }
                 var agi = new CalendarAgendaItem(scheduledItem.title, scheduledItem.scheduledRoom.startDate,
                 scheduledItem.scheduledRoom.endDate, scheduledItem.scheduledRoom.allDay, hashData);
+//                agi.setAgendaId(scheduledItem.scheduledRoom.id);
 //				if(displayProp != null){
                 if (scheduledItem.backgroundColor !== null) {
                     agi.setBackgroundColor(scheduledItem.backgroundColor);

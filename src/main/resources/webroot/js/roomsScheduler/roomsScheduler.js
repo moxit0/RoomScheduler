@@ -132,7 +132,6 @@ $(document).ready(function () {
     $.getJSON( "http://localhost:8088/roomScheduler/api/entities", function(data) {
         data.forEach(function(element) {
             var item = JSON.parse(element);
-            console.log("get data: "+item)
             var sdTs = item.scheduledRoom.startDate;
             var edTs = item.scheduledRoom.startDate;
             item.scheduledRoom.startDate= new Date(sdTs);
@@ -163,6 +162,8 @@ $(document).ready(function () {
     function myAgendaClickHandler(eventObj) {
         // Get ID of the agenda item from the event object
         var agendaId = eventObj.data.agendaId;
+        var agi = jfcalplugin.getAgendaItemById("#mycal", agendaId);
+        console.log("myAgendaClickHandler: "+JSON.stringify(agi));
         // pull agenda item from calendar
         var agendaItem = jfcalplugin.getAgendaItemById("#mycal", agendaId);
         clickAgendaItem = agendaItem;
