@@ -511,6 +511,63 @@ $(document).ready(function () {
             }
         },
         open: function (event, ui) {
+            $("#eStartDate").datepicker({
+                showOtherMonths: true,
+                selectOtherMonths: true,
+                changeMonth: true,
+                changeYear: true,
+                showButtonPanel: true,
+                dateFormat: 'yy-mm-dd'
+            });
+            // initialize end date picker
+            $("#eEndDate").datepicker({
+                showOtherMonths: true,
+                selectOtherMonths: true,
+                changeMonth: true,
+                changeYear: true,
+                showButtonPanel: true,
+                dateFormat: 'yy-mm-dd'
+            });
+            // initialize with the date that was clicked
+            $("#eStartDate").val(clickDate);
+            $("#eEndDate").val(clickDate);
+            // initialize color pickers
+            $("#eColorSelectorBackground").ColorPicker({
+                color: "#333333",
+                onShow: function (colpkr) {
+                    $(colpkr).css("z-index", "10000");
+                    $(colpkr).fadeIn(500);
+                    return false;
+                },
+                onHide: function (colpkr) {
+                    $(colpkr).fadeOut(500);
+                    return false;
+                },
+                onChange: function (hsb, hex, rgb) {
+                    $("#eColorSelectorBackground div").css("backgroundColor", "#" + hex);
+                    $("#eColorBackground").val("#" + hex);
+                }
+            });
+            //$("#colorBackground").val("#1040b0");     
+            $("#eColorSelectorForeground").ColorPicker({
+                color: "#ffffff",
+                onShow: function (colpkr) {
+                    $(colpkr).css("z-index", "10000");
+                    $(colpkr).fadeIn(500);
+                    return false;
+                },
+                onHide: function (colpkr) {
+                    $(colpkr).fadeOut(500);
+                    return false;
+                },
+                onChange: function (hsb, hex, rgb) {
+                    $("#eColorSelectorForeground div").css("backgroundColor", "#" + hex);
+                    $("#eColorForeground").val("#" + hex);
+                }
+            });
+            //$("#colorForeground").val("#ffffff");             
+            // put focus on first form input element
+            $("#eWhat").focus();
             if (clickAgendaItem != null) {
                 var title = clickAgendaItem.title;
                 var startDate = clickAgendaItem.startDate;
@@ -539,6 +596,17 @@ $(document).ready(function () {
         close: function () {
             // clear agenda data
             $("#display-event-form").html("");
+            $("#eStartDate").datepicker("destroy");
+            $("#eEndDate").datepicker("destroy");
+            $("#eStartDate").val("");
+            $("#eEndDate").val("");
+            $("#eStartHour option:eq(0)").attr("selected", "selected");
+            $("#eStartMin option:eq(0)").attr("selected", "selected");
+            $("#eStartMeridiem option:eq(0)").attr("selected", "selected");
+            $("#eEndHour option:eq(0)").attr("selected", "selected");
+            $("#eEndMin option:eq(0)").attr("selected", "selected");
+            $("#eEndMeridiem option:eq(0)").attr("selected", "selected");
+            $("#eWhat").val("");
         }
     });
 

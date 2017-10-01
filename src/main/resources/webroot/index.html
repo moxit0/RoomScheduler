@@ -223,10 +223,10 @@
             </div>
 
             <div id="display-event-form" title="View Agenda Item">
-                <!-- <form>
+                <form>
                     <fieldset>
                         <label for="name">What?</label>
-                        <input type="text" name="what" id="what" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;"/>
+                        <input type="text" name="what" id="eWhat" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;"/>
                         <label for="room">Select room </label>
                         <select name="roomsList">
                             <option>1</option>
@@ -244,12 +244,12 @@
                             <tr>
                                 <td>
                                     <label>Start Date</label>
-                                    <input type="text" name="startDate" id="startDate" value="" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;"/>                
+                                    <input type="text" name="startDate" id="eStartDate" value="" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;"/>                
                                 </td>
                                 <td>&nbsp;</td>
                                 <td>
                                     <label>Start Hour</label>
-                                    <select id="startHour" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
+                                    <select id="eStartHour" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
                                         <option value="12" SELECTED>12</option>
                                         <option value="1">1</option>
                                         <option value="2">2</option>
@@ -266,7 +266,7 @@
                                 <td>
                                 <td>
                                     <label>Start Minute</label>
-                                    <select id="startMin" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
+                                    <select id="eStartMin" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
                                         <option value="00" SELECTED>00</option>
                                         <option value="10">10</option>
                                         <option value="20">20</option>
@@ -277,7 +277,7 @@
                                 <td>
                                 <td>
                                     <label>Start AM/PM</label>
-                                    <select id="startMeridiem" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
+                                    <select id="eStartMeridiem" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
                                         <option value="AM" SELECTED>AM</option>
                                         <option value="PM">PM</option>
                                     </select>               
@@ -286,12 +286,12 @@
                             <tr>
                                 <td>
                                     <label>End Date</label>
-                                    <input type="text" name="endDate" id="endDate" value="" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;"/>                
+                                    <input type="text" name="endDate" id="eEndDate" value="" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;"/>                
                                 </td>
                                 <td>&nbsp;</td>
                                 <td>
                                     <label>End Hour</label>
-                                    <select id="endHour" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
+                                    <select id="eEndHour" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
                                         <option value="12" SELECTED>12</option>
                                         <option value="1">1</option>
                                         <option value="2">2</option>
@@ -308,7 +308,7 @@
                                 <td>
                                 <td>
                                     <label>End Minute</label>
-                                    <select id="endMin" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
+                                    <select id="eEndMin" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
                                         <option value="00" SELECTED>00</option>
                                         <option value="10">10</option>
                                         <option value="20">20</option>
@@ -319,7 +319,7 @@
                                 <td>
                                 <td>
                                     <label>End AM/PM</label>
-                                    <select id="endMeridiem" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
+                                    <select id="eEndMeridiem" class="text ui-widget-content ui-corner-all" style="margin-bottom:12px; width:95%; padding: .4em;">
                                         <option value="AM" SELECTED>AM</option>
                                         <option value="PM">PM</option>
                                     </select>               
@@ -332,21 +332,21 @@
                                     <label>Background Color</label>
                                 </td>
                                 <td>
-                                    <div id="colorSelectorBackground"><div style="background-color: #333333; width:30px; height:30px; border: 2px solid #000000;"></div></div>
-                                    <input type="hidden" id="colorBackground" value="#333333">
+                                    <div id="eColorSelectorBackground"><div style="background-color: #333333; width:30px; height:30px; border: 2px solid #000000;"></div></div>
+                                    <input type="hidden" id="eColorBackground" value="#333333">
                                 </td>
                                 <td>&nbsp;&nbsp;&nbsp;</td>
                                 <td>
                                     <label>Text Color</label>
                                 </td>
                                 <td>
-                                    <div id="colorSelectorForeground"><div style="background-color: #ffffff; width:30px; height:30px; border: 2px solid #000000;"></div></div>
-                                    <input type="hidden" id="colorForeground" value="#ffffff">
+                                    <div id="eColorSelectorForeground"><div style="background-color: #ffffff; width:30px; height:30px; border: 2px solid #000000;"></div></div>
+                                    <input type="hidden" id="eColorForeground" value="#ffffff">
                                 </td>                       
                             </tr>               
                         </table>
                     </fieldset>
-                </form> -->
+                </form>
             </div>		
 
             <p>&nbsp;</p>
