@@ -111,8 +111,21 @@ $(document).ready(function () {
             style: myStyle
         });
 
+    };
+
+    function uuid(){
+        var seed = Date.now();
+        if (window.performance && typeof window.performance.now === "function") {
+            seed += performance.now();
+        }
+        var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = (seed + Math.random() * 16) % 16 | 0;
+            seed = Math.floor(seed/16);
+
+            return (c === 'x' ? r : r & (0x3|0x8)).toString(16);
+        });
+        return uuid;
     }
-    ;
 
     /**
      * Make the day cells roughly 3/4th as tall as they are wide. this makes our calendar wider than it is tall. 
@@ -132,6 +145,7 @@ $(document).ready(function () {
     $.getJSON( "http://localhost:8088/roomScheduler/api/entities", function(data) {
         data.forEach(function(element) {
             var item = JSON.parse(element);
+            console.log("get data: "+item)
             var sdTs = item.scheduledRoom.startDate;
             var edTs = item.scheduledRoom.startDate;
             item.scheduledRoom.startDate= new Date(sdTs);
@@ -162,14 +176,11 @@ $(document).ready(function () {
     function myAgendaClickHandler(eventObj) {
         // Get ID of the agenda item from the event object
         var agendaId = eventObj.data.agendaId;
-        var agi = jfcalplugin.getAgendaItemById("#mycal", agendaId);
-        console.log("myAgendaClickHandler: "+JSON.stringify(agi));
         // pull agenda item from calendar
         var agendaItem = jfcalplugin.getAgendaItemById("#mycal", agendaId);
         clickAgendaItem = agendaItem;
         $("#display-event-form").dialog('open');
-    }
-    ;
+    };
 
     /**
      * Called when user drops an agenda item into a day cell.
@@ -183,8 +194,7 @@ $(document).ready(function () {
         var agendaItem = jfcalplugin.getAgendaItemById("#mycal", agendaId);
         alert("You dropped agenda item " + agendaItem.title +
                 " onto " + date.toString() + ". Here is where you can make an AJAX call to update your database.");
-    }
-    ;
+    };
 
     /**
      * Called when a user mouses over an agenda item	
@@ -193,8 +203,8 @@ $(document).ready(function () {
         var agendaId = eventObj.data.agendaId;
         var agendaItem = jfcalplugin.getAgendaItemById("#mycal", agendaId);
         //alert("You moused over agenda item " + agendaItem.title + " at location (X=" + eventObj.pageX + ", Y=" + eventObj.pageY + ")");
-    }
-    ;
+    };
+
     /**
      * Initialize jquery ui datepicker. set date format to yyyy-mm-dd for easy parsing
      */
@@ -351,7 +361,7 @@ $(document).ready(function () {
                     var startDateObj = new Date(parseInt(startYear), parseInt(startMonth) - 1, parseInt(startDay), startHour, startMin, 0, 0);
                     var endDateObj = new Date(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay), endHour, endMin, 0, 0);
 
-                    var scheduledRoom = new ScheduledRoom(2, 1, "DOUBLE", startDateObj, endDateObj, true, null);
+                    var scheduledRoom = new ScheduledRoom(uuid(), 1, "DOUBLE", startDateObj, endDateObj, true, null);
                     var scheduledItem = new ScheduledItem("#mycal",  what, scheduledRoom, $("#colorBackground").val(), $("#colorForeground").val());
                     var scheduledItemAsString = JSON.stringify(scheduledItem);
                     console.log(scheduledItemAsString);
@@ -399,8 +409,7 @@ $(document).ready(function () {
             }
         },
         open: function (event, ui) {
-            // initialize start date picker
-            $("#startDate").datepicker({
+             $("#startDate").datepicker({
                 showOtherMonths: true,
                 selectOtherMonths: true,
                 changeMonth: true,
@@ -437,7 +446,7 @@ $(document).ready(function () {
                     $("#colorBackground").val("#" + hex);
                 }
             });
-            //$("#colorBackground").val("#1040b0");		
+            //$("#colorBackground").val("#1040b0");     
             $("#colorSelectorForeground").ColorPicker({
                 color: "#ffffff",
                 onShow: function (colpkr) {
@@ -454,7 +463,7 @@ $(document).ready(function () {
                     $("#colorForeground").val("#" + hex);
                 }
             });
-            //$("#colorForeground").val("#ffffff");				
+            //$("#colorForeground").val("#ffffff");             
             // put focus on first form input element
             $("#what").focus();
         },

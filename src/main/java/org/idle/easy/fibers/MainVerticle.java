@@ -95,7 +95,7 @@ public class MainVerticle extends SyncVerticle {
         Instant endDate = scheduledRoom.getInstant("endDate");
         scheduledRoom.put("startDate", startDate).put("endDate", endDate);
         Long ts = startDate.toEpochMilli();
-        long result = awaitResult(h -> redisClient.zadd(String.join(":", "user:entry:", userId, ts.toString()), ts, entry.encodePrettily(), h));
+        long result = awaitResult(h -> redisClient.zadd("user:entry:"+userId, ts, entry.encodePrettily(), h));
         logger.info("saveEntity: {0},\nresult: {1}", entry.encodePrettily(), result);
 
         routingContext.response().end(entry.encode());
@@ -105,7 +105,7 @@ public class MainVerticle extends SyncVerticle {
     private void getAllEntities(RoutingContext routingContext) {
         String userId = routingContext.get("userId");
         JsonArray entries = awaitResult(h -> redisClient.zrange("user:entry:"+userId, 0, -1, h));
-        logger.info("getAllEntities: {0}", entries.encode());
+        logger.info("getAllEntities: key:{0} \n{1}", "user:entry:"+userId, entries.encode());
         routingContext.response().end(entries.encodePrettily());
     }
 
