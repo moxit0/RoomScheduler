@@ -9,7 +9,7 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <vertx.version>3.4.2</vertx.version>
+        <vertx.version>3.5.0</vertx.version>
         <main.verticle>org.idle.easy.fibers.MainVerticle</main.verticle>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -30,27 +30,22 @@
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-web</artifactId>
-            <version>${vertx.version}</version>
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-web-client</artifactId>
-            <version>${vertx.version}</version>
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-auth-oauth2</artifactId>
-            <version>${vertx.version}</version>
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-sync</artifactId>
-            <version>${vertx.version}</version>
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-mongo-client</artifactId>
-            <version>${vertx.version}</version>
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>
@@ -66,6 +61,7 @@
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
+                    <showDeprecation>true</showDeprecation>
                 </configuration>
             </plugin>
             <plugin>
