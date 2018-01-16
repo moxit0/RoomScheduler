@@ -1,8 +1,8 @@
 package org.idle.easy.fibers;
 
 import co.paralleluniverse.fibers.Suspendable;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
@@ -54,17 +54,17 @@ public class CookieCipher {
 
     @Suspendable
     public String encryptCookie(String source) {
-        logger.info("cookie source: {0}", source);
+        logger.info("cookie source: {}", source);
         String encryped = null;
         try {
             source = zeroPadMultiple(source);
-            final byte[] encrypted = cipherEncrypt.update(source.getBytes(StandardCharsets.UTF_8.name())); // seems like there should be a doFinal(), but route.coffee algorithm isn't calling it
+            final byte[] encrypted = cipherEncrypt.update(source.getBytes(StandardCharsets.UTF_8.name())); 
             encryped = Base64.getEncoder().encodeToString(encrypted);
             encryped = URLEncoder.encode(encryped, StandardCharsets.UTF_8.name());
         } catch (UnsupportedEncodingException e) {
             logger.error("Problem when decrypt UserContext from cookie", e);
         }
-        logger.info("cookie encrypted: {0}", encryped);
+        logger.info("cookie encrypted: {}", encryped);
         return encryped;
     }
 

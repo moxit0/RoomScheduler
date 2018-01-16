@@ -498,7 +498,66 @@ $(document).ready(function () {
                 $(this).dialog('close');
             },
             'Edit': function () {
-                alert("Make your own edit screen or dialog!");
+                // alert("Make your own edit screen or dialog!");
+                var startDate = $("#eStartDate").val();
+                    var startDtArray = startDate.split("-");
+                    var startYear = startDtArray[0];
+                    // jquery datepicker months start at 1 (1=January)      
+                    var startMonth = startDtArray[1];
+                    var startDay = startDtArray[2];
+                    // strip any preceeding 0's     
+                    startMonth = startMonth.replace(/^[0]+/g, "");
+                    startDay = startDay.replace(/^[0]+/g, "");
+                    var startHour = jQuery.trim($("#eStartHour").val());
+                    var startMin = jQuery.trim($("#eStartMin").val());
+                    var startMeridiem = jQuery.trim($("#eStartMeridiem").val());
+                    startHour = parseInt(startHour.replace(/^[0]+/g, ""));
+                    if (startMin == "0" || startMin == "00") {
+                        startMin = 0;
+                    } else {
+                        startMin = parseInt(startMin.replace(/^[0]+/g, ""));
+                    }
+                    if (startMeridiem == "AM" && startHour == 12) {
+                        startHour = 0;
+                    } else if (startMeridiem == "PM" && startHour < 12) {
+                        startHour = parseInt(startHour) + 12;
+                    }
+
+                    var endDate = $("#eEndDate").val();
+                    var endDtArray = endDate.split("-");
+                    var endYear = endDtArray[0];
+                    // jquery datepicker months start at 1 (1=January)      
+                    var endMonth = endDtArray[1];
+                    var endDay = endDtArray[2];
+                    // strip any preceeding 0's     
+                    endMonth = endMonth.replace(/^[0]+/g, "");
+
+                    endDay = endDay.replace(/^[0]+/g, "");
+                    var endHour = jQuery.trim($("#eEndHour").val());
+                    var endMin = jQuery.trim($("#eEndMin").val());
+                    var endMeridiem = jQuery.trim($("#eEndMeridiem").val());
+                    endHour = parseInt(endHour.replace(/^[0]+/g, ""));
+                    if (endMin == "0" || endMin == "00") {
+                        endMin = 0;
+                    } else {
+                        endMin = parseInt(endMin.replace(/^[0]+/g, ""));
+                    }
+                    if (endMeridiem == "AM" && endHour == 12) {
+                        endHour = 0;
+                    } else if (endMeridiem == "PM" && endHour < 12) {
+                        endHour = parseInt(endHour) + 12;
+                    }
+
+                    //alert("Start time: " + startHour + ":" + startMin + " " + startMeridiem + ", End time: " + endHour + ":" + endMin + " " + endMeridiem);
+
+                    // Dates use integers
+                    var startDateObj = new Date(parseInt(startYear), parseInt(startMonth) - 1, parseInt(startDay), startHour, startMin, 0, 0);
+                    var endDateObj = new Date(parseInt(endYear), parseInt(endMonth) - 1, parseInt(endDay), endHour, endMin, 0, 0);
+
+                    var scheduledRoom = new ScheduledRoom(uuid(), 1, "DOUBLE", startDateObj, endDateObj, true, null);
+                    var scheduledItem = new ScheduledItem("#mycal",  what, scheduledRoom, $("#eColorBackground").val(), $("#eColorBackground").val());
+                    var scheduledItemAsString = JSON.stringify(scheduledItem);
+                    console.log(scheduledItemAsString);
             },
             'Delete': function () {
                 if (confirm("Are you sure you want to delete this agenda item?")) {

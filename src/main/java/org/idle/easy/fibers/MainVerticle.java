@@ -3,17 +3,15 @@ package org.idle.easy.fibers;
 import co.paralleluniverse.fibers.Suspendable;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.auth.oauth2.AccessToken;
+import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.oauth2.OAuth2Auth;
 import io.vertx.ext.auth.oauth2.providers.GoogleAuth;
-import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.sync.Sync;
 import io.vertx.ext.sync.SyncVerticle;
 import io.vertx.ext.web.Cookie;
@@ -24,9 +22,10 @@ import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.handler.*;
 import io.vertx.redis.RedisClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 import static io.vertx.ext.sync.Sync.awaitResult;
@@ -37,7 +36,7 @@ public class MainVerticle extends SyncVerticle {
     private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
     private static final String COLLECTION_NAME = "Entities";
     private WebClient webClient;
-    private MongoClient mongoClient;
+//    private MongoClient mongoClient;
     private RedisClient redisClient;
     private CookieCipher cookieCipher;
 
@@ -72,7 +71,7 @@ public class MainVerticle extends SyncVerticle {
         router.routeWithRegex("/roomScheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
         router.get("/roomScheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
         router.get("/roomScheduler/api/entities").handler(Sync.fiberHandler(this::getAllEntities));
-        router.get("/roomScheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
+//        router.get("/roomScheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
         router.put("/roomScheduler/api/entities").handler(Sync.fiberHandler(this::saveNewEntity));
         router.get("/roomScheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
         router.get("/roomScheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
@@ -96,27 +95,28 @@ public class MainVerticle extends SyncVerticle {
         scheduledRoom.put("startDate", startDate).put("endDate", endDate);
         Long ts = startDate.toEpochMilli();
         long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
-        logger.info("saveEntity: {0},\nresult: {1}", entry.encodePrettily(), result);
+        logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), result);
 
-        routingContext.response().end(entry.encode());
+        routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entry.encode());
     }
 
     @Suspendable
     private void getAllEntities(RoutingContext routingContext) {
         String userId = routingContext.get("userId");
         JsonArray entries = awaitResult(h -> redisClient.zrange("user:entry:" + userId, 0, -1, h));
-        logger.info("getAllEntities: key:{0} \n{1}", "user:entry:" + userId, entries.encode());
-        routingContext.response().end(entries.encodePrettily());
+//        JsonArray entities = new JsonArray(entries.stream().map(e -> new JsonObject(e.toString())).collect(Collectors.toList()));
+        logger.info("getAllEntities: key:{} \n{}", "user:entry:" + userId, Json.encodePrettily(entries));
+        routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entries.encodePrettily());
     }
 
-    @Suspendable
-    private void getEntityById(RoutingContext routingContext) {
-        final JsonObject query = new JsonObject()
-                .put("_id", routingContext.pathParam("id"));
-        final List<JsonObject> entity = awaitResult(h -> mongoClient.find(COLLECTION_NAME, query, h));
-        routingContext.response()
-                .end(Json.encodePrettily(entity));
-    }
+//    @Suspendable
+//    private void getEntityById(RoutingContext routingContext) {
+//        final JsonObject query = new JsonObject()
+//                .put("_id", routingContext.pathParam("id"));
+//        final List<JsonObject> entity = awaitResult(h -> mongoClient.find(COLLECTION_NAME, query, h));
+//        routingContext.response()
+//                .end(Json.encodePrettily(entity));
+//    }
 
     @Suspendable
     private void getWebContent(RoutingContext routingContext) {
@@ -137,7 +137,7 @@ public class MainVerticle extends SyncVerticle {
             if (cookie != null) {
                 String decryptedCookie = cookieCipher.decryptCookie(cookie.getValue());
                 routingContext.put("userId", decryptedCookie.split(":")[0]);
-                logger.info("decryptedCookie: {0} ", decryptedCookie);
+                logger.info("decryptedCookie: {} ", decryptedCookie);
             }
             routingContext.next();
         }
@@ -177,14 +177,14 @@ public class MainVerticle extends SyncVerticle {
                 .put("code", routingContext.request().getParam("code"))
                 .put("redirect_uri", callbackUrl);
         try {
-            final AccessToken token = awaitResult(h -> oauth2Provider.getToken(tokenConfig, h));
+            final User user = awaitResult(h -> oauth2Provider.authenticate(tokenConfig, h));
+            final JsonObject principal = user.principal();
 //        String uri = "https://www.googleapis.com/oauth2/v1/userinfo?v=2&oauth_token=" + token.principal().getValue("access_token");
-            String uri = "/oauth2/v1/userinfo?v=2&oauth_token=" + token.principal().getValue("access_token");
+            String uri = "/oauth2/v1/userinfo?v=2&oauth_token=" + principal.getValue("access_token");
             HttpResponse<Buffer> response = awaitResult(h -> webClient.get(443, "www.googleapis.com", uri).ssl(true).send(h));
             JsonObject userInfo = response.bodyAsJsonObject();
-            logger.info("AccessToken: {0}", Json.encodePrettily(token.principal()));
-            logger.info("userInfo: {0}", Json.encodePrettily(userInfo));
-            JsonObject principal = token.principal();
+            logger.info("AccessToken: {}", Json.encodePrettily(principal));
+            logger.info("userInfo: {}", Json.encodePrettily(userInfo));
             final String userId = userInfo.getString("id");
             Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
             Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
@@ -196,6 +196,7 @@ public class MainVerticle extends SyncVerticle {
                     .end();
         } catch (Exception e) {
             logger.error("Grumna:", e);
+            e.printStackTrace();
             routingContext.response()
                     .setStatusCode(500)
                     .end("Boom !!!");
