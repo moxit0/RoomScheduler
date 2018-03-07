@@ -1,6 +1,7 @@
 package org.idle.easy.fibers;
 
 import co.paralleluniverse.fibers.Suspendable;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
@@ -10,10 +11,11 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.oauth2.AccessToken;
 import io.vertx.ext.auth.oauth2.OAuth2Auth;
 import io.vertx.ext.auth.oauth2.providers.GoogleAuth;
-import io.vertx.ext.mongo.MongoClient;
+//import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.sync.Sync;
 import io.vertx.ext.sync.SyncVerticle;
 import io.vertx.ext.web.Cookie;
@@ -37,7 +39,7 @@ public class MainVerticle extends SyncVerticle {
     private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
     private static final String COLLECTION_NAME = "Entities";
     private WebClient webClient;
-    private MongoClient mongoClient;
+//    private MongoClient mongoClient;
     private RedisClient redisClient;
     private CookieCipher cookieCipher;
 
@@ -68,22 +70,36 @@ public class MainVerticle extends SyncVerticle {
         router.route("/*").handler(redirectAuthHandler);
         router.post("/login").handler(FormLoginHandler.create(oauth2Provider));
          */
+
+
         router.route().failureHandler(ErrorHandler.create());
         router.routeWithRegex("/roomScheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
         router.get("/roomScheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
         router.get("/roomScheduler/api/entities").handler(Sync.fiberHandler(this::getAllEntities));
-        router.get("/roomScheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
+//        router.get("/roomScheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
         router.put("/roomScheduler/api/entities").handler(Sync.fiberHandler(this::saveNewEntity));
         router.get("/roomScheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
         router.get("/roomScheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
-        router.route("/roomScheduler/*").handler(StaticHandler.create()
-                .setIndexPage("index.html").setCachingEnabled(false));
+        router.get("/roomScheduler/google").handler(Sync.fiberHandler(this::getGoogleContent));
+        router.route("/roomScheduler/*").handler(StaticHandler.create().setIndexPage("index.html").setCachingEnabled(false));
+
+
         // HttpServer will be automatically shared if port matches
         server.requestHandler(router::accept).listen(8088);
         webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
 //        mongoClient = MongoClient.createShared(vertx, new JsonObject().put("connection_string", "mongodb://127.0.0.1:27017/testDb"));
         redisClient = RedisClient.create(vertx);
         cookieCipher = new CookieCipher();
+    }
+
+    @Suspendable
+    private void getGoogleContent(RoutingContext routingContext){
+        final HttpResponse<Buffer> response = Sync.awaitResult(h -> webClient.getAbs("https://www.google.com").send(h));
+        final String responseContent = response.bodyAsString("UTF-8");
+        logger.info("Result of Http request: {0}", responseContent);
+        routingContext.response()
+                .putHeader(HttpHeaderNames.CONTENT_TYPE, "text/html")
+                .end(responseContent);
     }
 
     @Suspendable
@@ -109,14 +125,14 @@ public class MainVerticle extends SyncVerticle {
         routingContext.response().end(entries.encodePrettily());
     }
 
-    @Suspendable
-    private void getEntityById(RoutingContext routingContext) {
-        final JsonObject query = new JsonObject()
-                .put("_id", routingContext.pathParam("id"));
-        final List<JsonObject> entity = awaitResult(h -> mongoClient.find(COLLECTION_NAME, query, h));
-        routingContext.response()
-                .end(Json.encodePrettily(entity));
-    }
+//    @Suspendable
+//    private void getEntityById(RoutingContext routingContext) {
+//        final JsonObject query = new JsonObject()
+//                .put("_id", routingContext.pathParam("id"));
+//        final List<JsonObject> entity = awaitResult(h -> mongoClient.find(COLLECTION_NAME, query, h));
+//        routingContext.response()
+//                .end(Json.encodePrettily(entity));
+//    }
 
     @Suspendable
     private void getWebContent(RoutingContext routingContext) {
@@ -177,14 +193,14 @@ public class MainVerticle extends SyncVerticle {
                 .put("code", routingContext.request().getParam("code"))
                 .put("redirect_uri", callbackUrl);
         try {
-            final AccessToken token = awaitResult(h -> oauth2Provider.getToken(tokenConfig, h));
+            final User user = awaitResult(h -> oauth2Provider.authenticate(tokenConfig, h));
+            JsonObject principal = user.principal();
 //        String uri = "https://www.googleapis.com/oauth2/v1/userinfo?v=2&oauth_token=" + token.principal().getValue("access_token");
-            String uri = "/oauth2/v1/userinfo?v=2&oauth_token=" + token.principal().getValue("access_token");
+            String uri = "/oauth2/v1/userinfo?v=2&oauth_token=" + principal.getValue("access_token");
             HttpResponse<Buffer> response = awaitResult(h -> webClient.get(443, "www.googleapis.com", uri).ssl(true).send(h));
             JsonObject userInfo = response.bodyAsJsonObject();
-            logger.info("AccessToken: {0}", Json.encodePrettily(token.principal()));
+            logger.info("AccessToken: {0}", Json.encodePrettily(principal));
             logger.info("userInfo: {0}", Json.encodePrettily(userInfo));
-            JsonObject principal = token.principal();
             final String userId = userInfo.getString("id");
             Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
             Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
