@@ -6,12 +6,8 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="vertx-sync-fibers" />
+        <module name="RoomScheduler" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="RoomScheduler" target="1.8" />
-      <module name="vertx-sync-fibers" target="1.8" />
-    </bytecodeTargetLevel>
   </component>
 </project>

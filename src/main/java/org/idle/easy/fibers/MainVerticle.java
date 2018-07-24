@@ -121,7 +121,10 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getWebContent(RoutingContext routingContext) {
-                HttpResponse<Buffer> response = awaitResult(h -> webClient.getAbs("http://www.grigordimitrov-bg.com/").send(h));
+        HttpResponse<Buffer> response = awaitResult(h -> webClient.getAbs("https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com/roomcheduler/28e0e33d90130fd469f2a2d2028122d0")
+                .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
+                .putHeader(HttpHeaders.AUTHORIZATION.toString(), "Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==")
+                .send(h));
         routingContext
                 .response()
 //                .response().putHeader("Location", "/roomScheduler/")
