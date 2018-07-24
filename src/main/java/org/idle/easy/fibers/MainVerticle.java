@@ -21,7 +21,7 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.handler.*;
-import io.vertx.redis.RedisClient;
+//import io.vertx.redis.RedisClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +37,7 @@ public class MainVerticle extends SyncVerticle {
     private static final String COLLECTION_NAME = "Entities";
     private WebClient webClient;
 //    private MongoClient mongoClient;
-    private RedisClient redisClient;
+//    private RedisClient redisClient;
     private CookieCipher cookieCipher;
 
     @Override
@@ -68,7 +68,7 @@ public class MainVerticle extends SyncVerticle {
         router.post("/login").handler(FormLoginHandler.create(oauth2Provider));
          */
         router.route().failureHandler(ErrorHandler.create());
-        router.routeWithRegex("/roomScheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
+//        router.routeWithRegex("/roomScheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
         router.get("/roomScheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
         router.get("/roomScheduler/api/entities").handler(Sync.fiberHandler(this::getAllEntities));
 //        router.get("/roomScheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
@@ -78,10 +78,10 @@ public class MainVerticle extends SyncVerticle {
         router.route("/roomScheduler/*").handler(StaticHandler.create()
                 .setIndexPage("index.html").setCachingEnabled(false));
         // HttpServer will be automatically shared if port matches
-        server.requestHandler(router::accept).listen(8088);
+        server.requestHandler(router::accept).listen(8080);
         webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
 //        mongoClient = MongoClient.createShared(vertx, new JsonObject().put("connection_string", "mongodb://127.0.0.1:27017/testDb"));
-        redisClient = RedisClient.create(vertx);
+//        redisClient = RedisClient.create(vertx);
         cookieCipher = new CookieCipher();
     }
 
@@ -94,8 +94,8 @@ public class MainVerticle extends SyncVerticle {
         Instant endDate = scheduledRoom.getInstant("endDate");
         scheduledRoom.put("startDate", startDate).put("endDate", endDate);
         Long ts = startDate.toEpochMilli();
-        long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
-        logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), result);
+//        long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
+//        logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), result);
 
         routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entry.encode());
     }
@@ -103,7 +103,8 @@ public class MainVerticle extends SyncVerticle {
     @Suspendable
     private void getAllEntities(RoutingContext routingContext) {
         String userId = routingContext.get("userId");
-        JsonArray entries = awaitResult(h -> redisClient.zrange("user:entry:" + userId, 0, -1, h));
+        JsonArray entries = new JsonArray();
+//        JsonArray entries = awaitResult(h -> redisClient.zrange("user:entry:" + userId, 0, -1, h));
 //        JsonArray entities = new JsonArray(entries.stream().map(e -> new JsonObject(e.toString())).collect(Collectors.toList()));
         logger.info("getAllEntities: key:{} \n{}", "user:entry:" + userId, Json.encodePrettily(entries));
         routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entries.encodePrettily());
@@ -120,9 +121,13 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getWebContent(RoutingContext routingContext) {
-        routingContext.response().putHeader("Location", "/roomScheduler/")
-                .setStatusCode(302)
-                .end();
+                HttpResponse<Buffer> response = awaitResult(h -> webClient.getAbs("http://www.grigordimitrov-bg.com/").send(h));
+        routingContext
+                .response()
+//                .response().putHeader("Location", "/roomScheduler/")
+//                .setStatusCode(302)
+                .setStatusCode(200)
+                .end(response.bodyAsString());
     }
 
     @Suspendable
@@ -150,7 +155,7 @@ public class MainVerticle extends SyncVerticle {
 
         OAuth2Auth oauth2 = GoogleAuth.create(vertx, clientId, clientSecret);
 
-        final String callbackUrl = "http://localhost:8088/roomScheduler/api/googletoken";
+        final String callbackUrl = "http://localhost:8080/roomScheduler/api/googletoken";
         // Authorization oauth2 URI
         String authorization_uri = oauth2.authorizeURL(new JsonObject()
                 .put("redirect_uri", callbackUrl)
@@ -171,7 +176,7 @@ public class MainVerticle extends SyncVerticle {
         String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
 
         OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, clientId, clientSecret);
-        final String callbackUrl = "http://localhost:8088/roomScheduler/api/googletoken";
+        final String callbackUrl = "http://localhost:8080/roomScheduler/api/googletoken";
 
         final JsonObject tokenConfig = new JsonObject()
                 .put("code", routingContext.request().getParam("code"))
@@ -186,8 +191,8 @@ public class MainVerticle extends SyncVerticle {
             logger.info("AccessToken: {}", Json.encodePrettily(principal));
             logger.info("userInfo: {}", Json.encodePrettily(userInfo));
             final String userId = userInfo.getString("id");
-            Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
-            Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
+//            Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
+//            Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
 
             Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
             routingContext.addCookie(cookie);
