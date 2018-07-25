@@ -1,0 +1,15 @@
+applications:
+- path: ./target/RoomScheduler-1.0-fat.jar
+  memory: 256M
+  disk_quota: 256M
+  instances: 1
+  name: room-scheduler
+#  timeout: 180
+#  buildpack: https://github.com/cloudfoundry/java-buildpack.git
+  buildpack: https://github.com/cloudfoundry/java-buildpack.git#3.x
+  env:
+    #JAVA_OPTS: -javaagent:quasar-core-0.7.5-jdk8.jar
+    JAVA_OPTS: "-Djava.net.preferIPv4Stack=true -Djava.net.preferIPv4Addresses=true"
+      #JAVA_OPTS: -javaagent:target/quasar-core-0.7.5-jdk8.jar
+
+#Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==
