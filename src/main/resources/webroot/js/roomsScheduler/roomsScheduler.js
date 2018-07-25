@@ -142,7 +142,7 @@ $(document).ready(function () {
     //                     dataType: "json"
     //                 });
 
-    $.getJSON( "http://localhost:8080/roomScheduler/api/entities", function(data) {
+    $.getJSON( "http://localhost:8080/room-scheduler/api/entities", function(data) {
         data.forEach(function(element) {
             var item = JSON.parse(element);
             console.log("get data: "+item)
@@ -367,7 +367,7 @@ $(document).ready(function () {
                     console.log(scheduledItemAsString);
                     $.ajax({
                         type: "PUT",
-                        url: "http://localhost:8080/roomScheduler/api/entities",
+                        url: "http://localhost:8080/room-scheduler/api/entities",
 //                        data: JSON.stringify(scheduledItem),
                         data: scheduledItemAsString,
                         success: function () {
