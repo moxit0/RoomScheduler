@@ -22,17 +22,17 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.handler.*;
+import io.vertx.redis.RedisClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.UUID;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 import static io.vertx.ext.sync.Sync.awaitResult;
 
-import io.vertx.redis.RedisClient;
 
 
 public class MainVerticle extends SyncVerticle {
@@ -41,8 +41,9 @@ public class MainVerticle extends SyncVerticle {
     private static final String COLLECTION_NAME = "Entities";
     private static final String DB_URL = "https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com";
     private WebClient webClient;
-    //    private MongoClient mongoClient;
+//    private MongoClient mongoClient;
     private RedisClient redisClient;
+
     private CookieCipher cookieCipher;
 
     @Override
@@ -73,20 +74,20 @@ public class MainVerticle extends SyncVerticle {
         router.post("/login").handler(FormLoginHandler.create(oauth2Provider));
          */
         router.route().failureHandler(ErrorHandler.create());
-//        router.routeWithRegex("/roomScheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
-        router.get("/roomScheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
-        router.get("/roomScheduler/api/entities").handler(Sync.fiberHandler(this::getAllEntities));
-//        router.get("/roomScheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
-        router.put("/roomScheduler/api/entities").handler(Sync.fiberHandler(this::saveNewEntity));
-        router.get("/roomScheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
-        router.get("/roomScheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
-        router.route("/roomScheduler/*").handler(StaticHandler.create()
+        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
+        router.get("/room-scheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
+        router.get("/room-scheduler/api/entities").handler(Sync.fiberHandler(this::getAllEntities));
+//        router.get("/room-scheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
+        router.put("/room-scheduler/api/entities").handler(Sync.fiberHandler(this::saveNewEntity));
+        router.get("/room-scheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
+        router.get("/room-scheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
+        router.route("/room-scheduler/*").handler(StaticHandler.create()
                 .setIndexPage("index.html").setCachingEnabled(false));
         // HttpServer will be automatically shared if port matches
         server.requestHandler(router::accept).listen(8080);
         webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
 //        mongoClient = MongoClient.createShared(vertx, new JsonObject().put("connection_string", "mongodb://127.0.0.1:27017/testDb"));
-//        redisClient = RedisClient.create(vertx);
+        redisClient = RedisClient.create(vertx);
         cookieCipher = new CookieCipher();
     }
 
@@ -101,7 +102,7 @@ public class MainVerticle extends SyncVerticle {
         scheduledRoom.put("startDate", startDate).put("endDate", endDate);
         Long ts = startDate.toEpochMilli();
         long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
-//        logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), result);
+        logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), result);
 
         routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entry.encode());
     }
@@ -130,19 +131,19 @@ public class MainVerticle extends SyncVerticle {
         HttpRequest<Buffer> httpRequest = doDataBaseGet("/roomcheduler/28e0e33d90130fd469f2a2d2028122d0").get();
         HttpResponse<Buffer> response = awaitResult(httpRequest::send);
         routingContext
-                .response()
-//                .response().putHeader("Location", "/roomScheduler/")
-//                .setStatusCode(302)
-                .setStatusCode(200)
-                .end(response.bodyAsString());
+//                .response()
+                .response().putHeader("Location", "/room-scheduler/")
+                .setStatusCode(302)
+//                .setStatusCode(200)
+                .end();
     }
 
     @Suspendable
     private void authenticate(RoutingContext routingContext) {
-        Cookie cookie = routingContext.getCookie("roomScheduler");
+        Cookie cookie = routingContext.getCookie("room-scheduler");
         String requestPath = routingContext.request().path();
-        if (cookie == null && !"/roomScheduler/api/googleauth".equals(requestPath) && !"/roomScheduler/api/googletoken".equals(requestPath)) {
-            routingContext.response().putHeader("Location", "/index.html")
+        if (cookie == null && !"/room-scheduler/api/googleauth".equals(requestPath) && !"/room-scheduler/api/googletoken".equals(requestPath)) {
+            routingContext.response().putHeader("Location", "/room-scheduler/#")
                     .setStatusCode(301)
                     .end();
         } else {
@@ -162,7 +163,7 @@ public class MainVerticle extends SyncVerticle {
 
         OAuth2Auth oauth2 = GoogleAuth.create(vertx, clientId, clientSecret);
 
-        final String callbackUrl = "http://localhost:8080/roomScheduler/api/googletoken";
+        final String callbackUrl = "http://localhost:8080/room-scheduler/api/googletoken";
         // Authorization oauth2 URI
         String authorization_uri = oauth2.authorizeURL(new JsonObject()
                 .put("redirect_uri", callbackUrl)
@@ -183,7 +184,7 @@ public class MainVerticle extends SyncVerticle {
         String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
 
         OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, clientId, clientSecret);
-        final String callbackUrl = "http://localhost:8080/roomScheduler/api/googletoken";
+        final String callbackUrl = "http://localhost:8080/room-scheduler/api/googletoken";
 
         final JsonObject tokenConfig = new JsonObject()
                 .put("code", routingContext.request().getParam("code"))
@@ -203,7 +204,7 @@ public class MainVerticle extends SyncVerticle {
 
             Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
             routingContext.addCookie(cookie);
-            routingContext.response().putHeader("Location", "/roomScheduler/")
+            routingContext.response().putHeader("Location", "/room-scheduler/")
                     .setStatusCode(301)
                     .end();
         } catch (Exception e) {
@@ -219,9 +220,9 @@ public class MainVerticle extends SyncVerticle {
     private Cookie createCookie(String userId, String expiresAt, String accessToken) {
         final String cookieSource = String.join(":", userId, expiresAt, accessToken);
         String encryptedCookie = cookieCipher.encryptCookie(cookieSource);
-        Cookie cookie = Cookie.cookie("roomScheduler", encryptedCookie);
+        Cookie cookie = Cookie.cookie("room-scheduler", encryptedCookie);
         cookie.setMaxAge(31536000000L / 1000);
-        cookie.setPath("/roomScheduler/");
+        cookie.setPath("/room-scheduler/");
         cookie.setHttpOnly(false);
         return cookie;
     }
