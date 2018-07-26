@@ -64,15 +64,6 @@ public class MainVerticle extends SyncVerticle {
         router.route().handler(CookieHandler.create());
         router.route().handler(BodyHandler.create());
 
-/*      String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
-        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
-        OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, clientId, clientSecret);
-        router.route().handler(SessionHandler.create(LocalSessionStore.create(vertx)));
-        router.route().handler(UserSessionHandler.create(oauth2Provider));
-        AuthHandler redirectAuthHandler = RedirectAuthHandler.create(oauth2Provider);
-        router.route("/*").handler(redirectAuthHandler);
-        router.post("/login").handler(FormLoginHandler.create(oauth2Provider));
-         */
         router.route().failureHandler(ErrorHandler.create());
         router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
         router.get("/room-scheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
@@ -81,8 +72,10 @@ public class MainVerticle extends SyncVerticle {
         router.put("/room-scheduler/api/entities").handler(Sync.fiberHandler(this::saveNewEntity));
         router.get("/room-scheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
         router.get("/room-scheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
-        router.route("/room-scheduler/*").handler(StaticHandler.create()
+//        router.route("/*").handler(ctx -> ctx.response().sendFile("webroot/index.html"));
+        router.route("/*").handler(StaticHandler.create()
                 .setIndexPage("index.html").setCachingEnabled(false));
+
         // HttpServer will be automatically shared if port matches
         server.requestHandler(router::accept).listen(8080);
         webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
@@ -143,7 +136,7 @@ public class MainVerticle extends SyncVerticle {
         Cookie cookie = routingContext.getCookie("room-scheduler");
         String requestPath = routingContext.request().path();
         if (cookie == null && !"/room-scheduler/api/googleauth".equals(requestPath) && !"/room-scheduler/api/googletoken".equals(requestPath)) {
-            routingContext.response().putHeader("Location", "/room-scheduler/#")
+            routingContext.response().putHeader("Location", "/")
                     .setStatusCode(301)
                     .end();
         } else {
