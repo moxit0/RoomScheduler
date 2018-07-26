@@ -1,7 +1,6 @@
 package org.idle.easy.fibers;
 
 import co.paralleluniverse.fibers.Suspendable;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
@@ -10,49 +9,40 @@ import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-<<<<<<< HEAD
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.auth.User;
-import io.vertx.ext.auth.oauth2.AccessToken;
-import io.vertx.ext.auth.oauth2.OAuth2Auth;
-import io.vertx.ext.auth.oauth2.providers.GoogleAuth;
-//import io.vertx.ext.mongo.MongoClient;
-=======
 import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.oauth2.OAuth2Auth;
 import io.vertx.ext.auth.oauth2.providers.GoogleAuth;
->>>>>>> 6125ac8c8684e902785e42c5b41a139a047f792d
 import io.vertx.ext.sync.Sync;
 import io.vertx.ext.sync.SyncVerticle;
 import io.vertx.ext.web.Cookie;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.handler.*;
-//import io.vertx.redis.RedisClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static io.vertx.ext.sync.Sync.awaitResult;
+
+import io.vertx.redis.RedisClient;
 
 
 public class MainVerticle extends SyncVerticle {
 
     private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
     private static final String COLLECTION_NAME = "Entities";
+    private static final String DB_URL = "https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com";
     private WebClient webClient;
-//    private MongoClient mongoClient;
-<<<<<<< HEAD
+    //    private MongoClient mongoClient;
     private RedisClient redisClient;
-=======
-//    private RedisClient redisClient;
->>>>>>> 6125ac8c8684e902785e42c5b41a139a047f792d
     private CookieCipher cookieCipher;
 
     @Override
@@ -82,8 +72,6 @@ public class MainVerticle extends SyncVerticle {
         router.route("/*").handler(redirectAuthHandler);
         router.post("/login").handler(FormLoginHandler.create(oauth2Provider));
          */
-
-
         router.route().failureHandler(ErrorHandler.create());
 //        router.routeWithRegex("/roomScheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
         router.get("/roomScheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
@@ -92,10 +80,8 @@ public class MainVerticle extends SyncVerticle {
         router.put("/roomScheduler/api/entities").handler(Sync.fiberHandler(this::saveNewEntity));
         router.get("/roomScheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
         router.get("/roomScheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
-        router.get("/roomScheduler/google").handler(Sync.fiberHandler(this::getGoogleContent));
-        router.route("/roomScheduler/*").handler(StaticHandler.create().setIndexPage("index.html").setCachingEnabled(false));
-
-
+        router.route("/roomScheduler/*").handler(StaticHandler.create()
+                .setIndexPage("index.html").setCachingEnabled(false));
         // HttpServer will be automatically shared if port matches
         server.requestHandler(router::accept).listen(8080);
         webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
@@ -105,25 +91,16 @@ public class MainVerticle extends SyncVerticle {
     }
 
     @Suspendable
-    private void getGoogleContent(RoutingContext routingContext){
-        final HttpResponse<Buffer> response = Sync.awaitResult(h -> webClient.getAbs("https://www.google.com").send(h));
-        final String responseContent = response.bodyAsString("UTF-8");
-        logger.info("Result of Http request: {0}", responseContent);
-        routingContext.response()
-                .putHeader(HttpHeaderNames.CONTENT_TYPE, "text/html")
-                .end(responseContent);
-    }
-
-    @Suspendable
     private void saveNewEntity(RoutingContext routingContext) {
         String userId = routingContext.get("userId");
         final JsonObject entry = routingContext.getBodyAsJson();
+        entry.put("userId", userId);
         JsonObject scheduledRoom = entry.getJsonObject("scheduledRoom");
         Instant startDate = scheduledRoom.getInstant("startDate");
         Instant endDate = scheduledRoom.getInstant("endDate");
         scheduledRoom.put("startDate", startDate).put("endDate", endDate);
         Long ts = startDate.toEpochMilli();
-//        long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
+        long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
 //        logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), result);
 
         routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entry.encode());
@@ -132,11 +109,11 @@ public class MainVerticle extends SyncVerticle {
     @Suspendable
     private void getAllEntities(RoutingContext routingContext) {
         String userId = routingContext.get("userId");
-        JsonArray entries = new JsonArray();
-//        JsonArray entries = awaitResult(h -> redisClient.zrange("user:entry:" + userId, 0, -1, h));
-//        JsonArray entities = new JsonArray(entries.stream().map(e -> new JsonObject(e.toString())).collect(Collectors.toList()));
-        logger.info("getAllEntities: key:{} \n{}", "user:entry:" + userId, Json.encodePrettily(entries));
-        routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entries.encodePrettily());
+//        JsonArray entries = new JsonArray();
+        JsonArray entries = awaitResult(h -> redisClient.zrange("user:entry:" + userId, 0, -1, h));
+        JsonArray entities = new JsonArray(entries.stream().map(e -> new JsonObject(e.toString())).collect(Collectors.toList()));
+        logger.info("getAllEntities: key:{} \n{}", "user:entry:" + userId, Json.encodePrettily(entities));
+        routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entities.encodePrettily());
     }
 
 //    @Suspendable
@@ -150,10 +127,8 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getWebContent(RoutingContext routingContext) {
-        HttpResponse<Buffer> response = awaitResult(h -> webClient.getAbs("https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com/roomcheduler/28e0e33d90130fd469f2a2d2028122d0")
-                .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
-                .putHeader(HttpHeaders.AUTHORIZATION.toString(), "Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==")
-                .send(h));
+        HttpRequest<Buffer> httpRequest = doDataBaseGet("/roomcheduler/28e0e33d90130fd469f2a2d2028122d0").get();
+        HttpResponse<Buffer> response = awaitResult(httpRequest::send);
         routingContext
                 .response()
 //                .response().putHeader("Location", "/roomScheduler/")
@@ -215,25 +190,16 @@ public class MainVerticle extends SyncVerticle {
                 .put("redirect_uri", callbackUrl);
         try {
             final User user = awaitResult(h -> oauth2Provider.authenticate(tokenConfig, h));
-<<<<<<< HEAD
-            JsonObject principal = user.principal();
-=======
             final JsonObject principal = user.principal();
->>>>>>> 6125ac8c8684e902785e42c5b41a139a047f792d
 //        String uri = "https://www.googleapis.com/oauth2/v1/userinfo?v=2&oauth_token=" + token.principal().getValue("access_token");
             String uri = "/oauth2/v1/userinfo?v=2&oauth_token=" + principal.getValue("access_token");
             HttpResponse<Buffer> response = awaitResult(h -> webClient.get(443, "www.googleapis.com", uri).ssl(true).send(h));
             JsonObject userInfo = response.bodyAsJsonObject();
-<<<<<<< HEAD
-            logger.info("AccessToken: {0}", Json.encodePrettily(principal));
-            logger.info("userInfo: {0}", Json.encodePrettily(userInfo));
-=======
             logger.info("AccessToken: {}", Json.encodePrettily(principal));
             logger.info("userInfo: {}", Json.encodePrettily(userInfo));
->>>>>>> 6125ac8c8684e902785e42c5b41a139a047f792d
             final String userId = userInfo.getString("id");
-//            Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
-//            Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
+            Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
+            Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
 
             Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
             routingContext.addCookie(cookie);
@@ -258,5 +224,13 @@ public class MainVerticle extends SyncVerticle {
         cookie.setPath("/roomScheduler/");
         cookie.setHttpOnly(false);
         return cookie;
+    }
+
+    @Suspendable
+    private Supplier<HttpRequest<Buffer>> doDataBaseGet(String requestPath) {
+        //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
+        return () -> webClient.getAbs(DB_URL + requestPath)
+                .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
+                .putHeader(HttpHeaders.AUTHORIZATION.toString(), "Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==");
     }
 }
