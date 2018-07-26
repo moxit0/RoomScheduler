@@ -197,7 +197,7 @@ public class MainVerticle extends SyncVerticle {
 
             Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
             routingContext.addCookie(cookie);
-            routingContext.response().putHeader("Location", "/room-scheduler/")
+            routingContext.response().putHeader("Location", "/")
                     .setStatusCode(301)
                     .end();
         } catch (Exception e) {
