@@ -1,6 +1,7 @@
 package org.idle.easy.fibers;
 
 import co.paralleluniverse.fibers.Suspendable;
+import io.vertx.config.ConfigRetriever;
 import io.vertx.core.Future;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
@@ -22,17 +23,14 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.handler.*;
-import io.vertx.redis.RedisClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.function.Supplier;
 
 import static io.vertx.ext.sync.Sync.awaitResult;
-
 
 
 public class MainVerticle extends SyncVerticle {
@@ -40,16 +38,34 @@ public class MainVerticle extends SyncVerticle {
     private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
     private static final String COLLECTION_NAME = "Entities";
     private static final String DB_URL = "https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com";
+    private static final String BASIC_AUTH_HEADER = "Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==";
     private WebClient webClient;
-//    private MongoClient mongoClient;
-    private RedisClient redisClient;
+    //    private MongoClient mongoClient;
+//    private RedisClient redisClient;
 
     private CookieCipher cookieCipher;
+    private int httpPort;
+    private boolean deployedOnCloud = false;
 
     @Override
     @Suspendable
     public void start(Future<Void> startFuture) throws Exception {
         super.start(startFuture);
+        loadConfiguration();
+        try {
+            //check if some cloud cpecific environment is present
+            deployedOnCloud = System.getenv("PORT") != null;
+            if (deployedOnCloud) {
+                httpPort = Integer.parseInt(System.getenv("PORT"));
+            } else {
+                httpPort = config().getInteger("httpPort");
+            }
+            logger.info("Deployed with port: {}", httpPort);
+
+        } catch (Exception e) {
+            logger.warn("Environment variable PORT not found or not valid. Defautling to: {}", httpPort);
+            httpPort = 8080;
+        }
         HttpServer server = vertx.createHttpServer();
         Router router = Router.router(vertx);
         router.route().handler(CorsHandler.create("*")
@@ -77,11 +93,18 @@ public class MainVerticle extends SyncVerticle {
                 .setIndexPage("index.html").setCachingEnabled(false));
 
         // HttpServer will be automatically shared if port matches
-        server.requestHandler(router::accept).listen(8080);
+        server.requestHandler(router::accept).listen(httpPort);
         webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
 //        mongoClient = MongoClient.createShared(vertx, new JsonObject().put("connection_string", "mongodb://127.0.0.1:27017/testDb"));
-        redisClient = RedisClient.create(vertx);
+//        redisClient = RedisClient.create(vertx);
         cookieCipher = new CookieCipher();
+    }
+
+    @Suspendable
+    private void loadConfiguration() {
+        final ConfigRetriever retriever = ConfigRetriever.create(vertx);
+        final JsonObject configValues = awaitResult(retriever::getConfig);
+        config().mergeIn(configValues.getJsonObject("web"));
     }
 
     @Suspendable
@@ -94,8 +117,9 @@ public class MainVerticle extends SyncVerticle {
         Instant endDate = scheduledRoom.getInstant("endDate");
         scheduledRoom.put("startDate", startDate).put("endDate", endDate);
         Long ts = startDate.toEpochMilli();
-        long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
-        logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), result);
+//        long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
+        JsonObject docs = doDataBasePost("/roomcheduler", entry);
+        logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), Json.encodePrettily(docs));
 
         routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entry.encode());
     }
@@ -104,10 +128,13 @@ public class MainVerticle extends SyncVerticle {
     private void getAllEntities(RoutingContext routingContext) {
         String userId = routingContext.get("userId");
 //        JsonArray entries = new JsonArray();
-        JsonArray entries = awaitResult(h -> redisClient.zrange("user:entry:" + userId, 0, -1, h));
-        JsonArray entities = new JsonArray(entries.stream().map(e -> new JsonObject(e.toString())).collect(Collectors.toList()));
-        logger.info("getAllEntities: key:{} \n{}", "user:entry:" + userId, Json.encodePrettily(entities));
-        routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entities.encodePrettily());
+//        JsonArray entries = awaitResult(h -> redisClient.zrange("user:entry:" + userId, 0, -1, h));
+//        JsonArray entities = new JsonArray(entries.stream().map(e -> new JsonObject(e.toString())).collect(Collectors.toList()));
+
+        JsonObject docs = doDataBasePost("/roomcheduler/_find", new JsonObject().put("selector", new JsonObject().put("userId", userId)));
+//        logger.info("getAllEntities: key:{} \n{}", "user:entry:" + userId, Json.encodePrettily(entities));
+        logger.info("getAllEntities: {}", Json.encodePrettily(docs));
+        routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(docs.encodePrettily());
     }
 
 //    @Suspendable
@@ -121,11 +148,11 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getWebContent(RoutingContext routingContext) {
-        HttpRequest<Buffer> httpRequest = doDataBaseGet("/roomcheduler/28e0e33d90130fd469f2a2d2028122d0").get();
-        HttpResponse<Buffer> response = awaitResult(httpRequest::send);
+//        HttpRequest<Buffer> httpRequest = doDataBaseGet("/roomcheduler/28e0e33d90130fd469f2a2d2028122d0").get();
+//        HttpResponse<Buffer> response = awaitResult(httpRequest::send);
         routingContext
 //                .response()
-                .response().putHeader("Location", "/room-scheduler/")
+                .response().putHeader("Location", "/")
                 .setStatusCode(302)
 //                .setStatusCode(200)
                 .end();
@@ -151,12 +178,13 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void startGoogleAuth(RoutingContext routingContext) {
-        String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
-        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
+//        String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
+//        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
 
-        OAuth2Auth oauth2 = GoogleAuth.create(vertx, clientId, clientSecret);
+        OAuth2Auth oauth2 = GoogleAuth.create(vertx, config().getString("client_id"), config().getString("client_secret"));
 
-        final String callbackUrl = "http://localhost:8080/room-scheduler/api/googletoken";
+//        final String callbackUrl = "http://localhost:8080/room-scheduler/api/googletoken";
+        final String callbackUrl = deployedOnCloud ? config().getJsonArray("redirect_uris").getString(1) : config().getJsonArray("redirect_uris").getString(0);
         // Authorization oauth2 URI
         String authorization_uri = oauth2.authorizeURL(new JsonObject()
                 .put("redirect_uri", callbackUrl)
@@ -173,11 +201,12 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getGoogleToken(RoutingContext routingContext) {
-        String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
-        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
+//        String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
+//        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
 
-        OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, clientId, clientSecret);
-        final String callbackUrl = "http://localhost:8080/room-scheduler/api/googletoken";
+        OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, config().getString("client_id"), config().getString("client_secret"));
+//        final String callbackUrl = "http://localhost:8080/room-scheduler/api/googletoken";
+        final String callbackUrl = deployedOnCloud ? config().getJsonArray("redirect_uris").getString(1) : config().getJsonArray("redirect_uris").getString(0);
 
         final JsonObject tokenConfig = new JsonObject()
                 .put("code", routingContext.request().getParam("code"))
@@ -192,8 +221,8 @@ public class MainVerticle extends SyncVerticle {
             logger.info("AccessToken: {}", Json.encodePrettily(principal));
             logger.info("userInfo: {}", Json.encodePrettily(userInfo));
             final String userId = userInfo.getString("id");
-            Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
-            Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
+//            Long p = awaitResult(h -> redisClient.hset("user:" + userId, "principal", principal.encodePrettily(), h));
+//            Long u = awaitResult(h -> redisClient.hset("user:" + userId, "userInfo", userInfo.encodePrettily(), h));
 
             Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
             routingContext.addCookie(cookie);
@@ -225,6 +254,18 @@ public class MainVerticle extends SyncVerticle {
         //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
         return () -> webClient.getAbs(DB_URL + requestPath)
                 .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
-                .putHeader(HttpHeaders.AUTHORIZATION.toString(), "Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==");
+                .putHeader(HttpHeaders.AUTHORIZATION.toString(), BASIC_AUTH_HEADER)
+                .ssl(true);
+    }
+
+    @Suspendable
+    private JsonObject doDataBasePost(String requestPath, JsonObject requestBody) {
+        //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
+        final HttpRequest<Buffer> httpRequest = webClient.postAbs(DB_URL + requestPath)
+                .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
+                .putHeader(HttpHeaders.AUTHORIZATION.toString(), BASIC_AUTH_HEADER)
+                .ssl(true);
+        HttpResponse<Buffer> response = awaitResult(h -> httpRequest.sendJsonObject(requestBody, h));
+        return response.bodyAsJsonObject();
     }
 }

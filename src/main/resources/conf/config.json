@@ -1,0 +1,14 @@
+{
+  "web": {
+    "httpPort": 8080,
+
+    "client_id": "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com",
+    "client_secret": "sbYikW3olRC0O4SqvSD3xQrA",
+    "project_id": "idlesblog",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://accounts.google.com/o/oauth2/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "redirect_uris": ["http://localhost:8080/room-scheduler/api/googletoken", "https://room-scheduler.eu-gb.mybluemix.net/room-scheduler/api/googletoken"],
+    "javascript_origins": ["http://localhost:8080", "https://room-scheduler.eu-gb.mybluemix.net"]
+  }
+}

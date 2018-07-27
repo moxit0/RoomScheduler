@@ -44,14 +44,18 @@
             <groupId>io.vertx</groupId>
             <artifactId>vertx-sync</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-config</artifactId>
+        </dependency>
         <!--<dependency>-->
             <!--<groupId>io.vertx</groupId>-->
             <!--<artifactId>vertx-mongo-client</artifactId>-->
         <!--</dependency>-->
-        <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-redis-client</artifactId>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>io.vertx</groupId>-->
+            <!--<artifactId>vertx-redis-client</artifactId>-->
+        <!--</dependency>-->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
