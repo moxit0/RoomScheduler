@@ -22,4 +22,6 @@
 hs_err_pid*
 
 .idea/
+.idea/compiler.xml
 .vertx/
+nbactions.xml

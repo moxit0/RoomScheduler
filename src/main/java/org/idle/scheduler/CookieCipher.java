@@ -1,4 +1,4 @@
-package org.idle.easy.fibers;
+package org.idle.scheduler;
 
 import co.paralleluniverse.fibers.Suspendable;
 import org.slf4j.Logger;

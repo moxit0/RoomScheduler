@@ -10,5 +10,18 @@
     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
     "redirect_uris": ["http://localhost:8080/room-scheduler/api/googletoken", "https://room-scheduler.eu-gb.mybluemix.net/room-scheduler/api/googletoken"],
     "javascript_origins": ["http://localhost:8080", "https://room-scheduler.eu-gb.mybluemix.net"]
-  }
+  },
+    "db":{
+      "apikey": "JZxuv82GHtjrqMxqOlfI5mk7yv37WuZlMFKhYqaD1KYl",
+      "host": "d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com",
+      "iam_apikey_description": "Auto generated apikey during resource-key operation for Instance - crn:v1:bluemix:public:cloudantnosqldb:eu-gb:a/bf2728ae644924b5e8d6b70205f84de4:11cd7c9f-af19-412f-a1e4-41aae39b78ce::",
+      "iam_apikey_name": "auto-generated-apikey-52da5274-8a72-4abb-b194-be0bb0315ff0",
+      "iam_role_crn": "crn:v1:bluemix:public:iam::::serviceRole:Manager",
+      "iam_serviceid_crn": "crn:v1:bluemix:public:iam-identity::a/bf2728ae644924b5e8d6b70205f84de4::serviceid:ServiceId-2e029c4b-0b83-4e9b-b7b9-a38253243ed8",
+      "password": "640fc78bef8ed67da2e433fd60f189f1b057f51fa8450efb4cf3eb63d18ec9b2",
+      "port": 443,
+      "url": "https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix:640fc78bef8ed67da2e433fd60f189f1b057f51fa8450efb4cf3eb63d18ec9b2@d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com",
+      "username": "d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix",
+      "auth_header":"Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg=="
+    }
 }

@@ -2,6 +2,8 @@ $(document).ready(function () {
 
     var clickDate = "";
     var clickAgendaItem = "";
+    // var url = 'https://room-scheduler.eu-gb.mybluemix.net';
+     var url = 'http://localhost:8080';
 
     /**
      * Initializes calendar with current year & month
@@ -29,7 +31,7 @@ $(document).ready(function () {
             divElm.qtip("destroy");
         }
     }
-    ;
+
 
     /**
      * Do something when dragging stops on agenda div
@@ -37,7 +39,7 @@ $(document).ready(function () {
     function myAgendaDragStop(eventObj, divElm, agendaItem) {
         //alert("drag stop");
     }
-    ;
+
 
     /**
      * Custom tooltip - use any tooltip library you want to display the agenda data.
@@ -142,10 +144,10 @@ $(document).ready(function () {
     //                     dataType: "json"
     //                 });
 
-    $.getJSON( "http://localhost:8080/room-scheduler/api/entities", function(data) {
-        data.forEach(function(element) {
-            var item = JSON.parse(element);
-            console.log("get data: "+item)
+    $.getJSON( url+"/room-scheduler/api/entities", function(data) {
+        data.forEach(function(item) {
+            console.log("element: : %o", item)
+            // var item = JSON.parse(element);
             var sdTs = item.scheduledRoom.startDate;
             var edTs = item.scheduledRoom.startDate;
             item.scheduledRoom.startDate= new Date(sdTs);
@@ -289,6 +291,12 @@ $(document).ready(function () {
         return false;
     });
 
+    $("#googleRequestToken").button();
+    $('#googleRequestToken').click(function () {
+        window.location = "/room-scheduler/api/googleauth";
+        return false;
+    });
+
     /**
      * Initialize add event modal form
      */
@@ -367,7 +375,7 @@ $(document).ready(function () {
                     console.log(scheduledItemAsString);
                     $.ajax({
                         type: "PUT",
-                        url: "http://localhost:8080/room-scheduler/api/entities",
+                        url: url+"/room-scheduler/api/entities",
 //                        data: JSON.stringify(scheduledItem),
                         data: scheduledItemAsString,
                         success: function () {
