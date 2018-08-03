@@ -37,14 +37,12 @@ import org.idle.scheduler.auth.AuthenticationService;
 public class MainVerticle extends SyncVerticle {
 
     private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
-    private static final String DB_URL = "https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com";
-    private static final String BASIC_AUTH_HEADER = "Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==";
+//    private static final String DB_URL = "https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com";
+//    private static final String BASIC_AUTH_HEADER = "Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==";
     private WebClient webClient;
     //    private MongoClient mongoClient;
 //    private RedisClient redisClient;
     private CookieCipher cookieCipher;
-    private int httpPort;
-    private boolean deployedOnCloud = false;
 
     @Override
     @Suspendable
@@ -55,9 +53,10 @@ public class MainVerticle extends SyncVerticle {
 //                JsonObject result = h.result();
 //                config().mergeIn(result.getJsonObject("web"));
         JsonObject webConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("web");
+        int httpPort;
         try {
             //check if some cloud cpecific environment is present
-            deployedOnCloud = System.getenv("PORT") != null;
+            boolean deployedOnCloud = System.getenv("PORT") != null;
             if (deployedOnCloud) {
                 httpPort = Integer.parseInt(System.getenv("PORT"));
             } else {
@@ -128,11 +127,10 @@ public class MainVerticle extends SyncVerticle {
     @Suspendable
     private void getAllEntities(RoutingContext routingContext) {
         String userId = routingContext.get("userId");
-//        JsonArray entries = new JsonArray();
-//        JsonArray entries = awaitResult(h -> redisClient.zrange("user:entry:" + userId, 0, -1, h));
-//        JsonArray entities = new JsonArray(entries.stream().map(e -> new JsonObject(e.toString())).collect(Collectors.toList()));
+        JsonObject queryBody = new JsonObject().put("selector", new JsonObject().put("userId", userId));
+        logger.info("queryBody: {}", queryBody.encodePrettily());
 
-        JsonObject dbResponse = doDataBasePost("/roomcheduler/_find", new JsonObject().put("selector", new JsonObject().put("userId", userId)));
+        JsonObject dbResponse = doDataBasePost("/roomcheduler/_find", queryBody);
         JsonArray docs = dbResponse.getJsonArray("docs", new JsonArray());
         logger.info("getAllEntities: {}", docs.encodePrettily());
         routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(docs.encode());
@@ -177,29 +175,6 @@ public class MainVerticle extends SyncVerticle {
         }
     }
 
-//    @Suspendable
-//    private void startGoogleAuth(RoutingContext routingContext) {
-////        String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
-////        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
-//        JsonObject webConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("web");
-//
-//        OAuth2Auth oauth2 = GoogleAuth.create(vertx, webConfig.getString("client_id"), webConfig.getString("client_secret"));
-//
-////        final String callbackUrl = "http://localhost:8080/room-scheduler/api/googletoken";
-//        final String callbackUrl = deployedOnCloud ? webConfig.getJsonArray("redirect_uris").getString(1) : webConfig.getJsonArray("redirect_uris").getString(0);
-//        // Authorization oauth2 URI
-//        String authorization_uri = oauth2.authorizeURL(new JsonObject()
-//                .put("redirect_uri", callbackUrl)
-//                .put("scope", "openid profile email https://www.googleapis.com/auth/calendar")
-//                .put("approval_prompt", "force")
-//                .put("access_type", "offline")
-//                .put("state", UUID.randomUUID().toString()));
-//
-//        routingContext.response()
-//                .putHeader("Location", authorization_uri)
-//                .setStatusCode(302)
-//                .end();
-//    }
     @Suspendable
     private void startGoogleAuth(RoutingContext routingContext) {
         logger.info("startGoogleAuth".toUpperCase());
@@ -217,46 +192,16 @@ public class MainVerticle extends SyncVerticle {
         JsonObject userInfo = AuthenticationService.getInstance().authenticate(routingContext.request().getParam("code"));
         JsonObject principal = userInfo.getJsonObject("principal");
         final String userId = userInfo.getString("sub");
-        final long expiresIn = principal.getLong("expires_in");
+        final long expiresAt = principal.getLong("expires_at", 0L);
         logger.info("UserInfo: {}", Json.encodePrettily(userInfo));
+        Cookie oldCookie = routingContext.removeCookie("room-scheduler");
+        Cookie cookie = createCookie(userId, Long.toString(expiresAt), principal.getString("access_token"));
+        oldCookie.setValue(cookie.getValue());
+        routingContext.addCookie(cookie);
 
         redirectToHome(routingContext);
     }
 
-//    @Suspendable
-//    private void getGoogleToken(RoutingContext routingContext) {
-////        String clientId = "873521963386-08elodg1nfpu2j784bikm66e3hjf4m3p.apps.googleusercontent.com";
-////        String clientSecret = "sbYikW3olRC0O4SqvSD3xQrA";
-//        JsonObject webConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("web");
-//        OAuth2Auth oauth2Provider = GoogleAuth.create(vertx, webConfig.getString("client_id"), webConfig.getString("client_secret"));
-////        final String callbackUrl = "http://localhost:8080/room-scheduler/api/googletoken";
-//        final String callbackUrl = deployedOnCloud ? webConfig.getJsonArray("redirect_uris").getString(1) : webConfig.getJsonArray("redirect_uris").getString(0);
-//
-//        final JsonObject tokenConfig = new JsonObject()
-//                .put("code", routingContext.request().getParam("code"))
-//                .put("redirect_uri", callbackUrl);
-//        try {
-//            final User user = awaitResult(h -> oauth2Provider.authenticate(tokenConfig, h));
-//            final JsonObject principal = user.principal();
-//            String uri = "/oauth2/v1/userinfo?v=2&oauth_token=" + principal.getValue("access_token");
-//            HttpResponse<Buffer> response = awaitResult(h -> webClient.get(443, "www.googleapis.com", uri).ssl(true).send(h));
-//            JsonObject userInfo = response.bodyAsJsonObject();
-//            logger.info("AccessToken: {}", Json.encodePrettily(principal));
-//            logger.info("userInfo: {}", Json.encodePrettily(userInfo));
-//            final String userId = userInfo.getString("id");
-//            Cookie cookie = createCookie(userId, principal.getLong("expires_at").toString(), principal.getString("access_token"));
-//            routingContext.addCookie(cookie);
-//            routingContext.response().putHeader("Location", "/")
-//                    .setStatusCode(301)
-//                    .end();
-//        } catch (Exception e) {
-//            logger.error("Grumna:", e);
-//            e.printStackTrace();
-//            routingContext.response()
-//                    .setStatusCode(500)
-//                    .end("Boom !!!");
-//        }
-//    }
     @Suspendable
     private Cookie createCookie(String userId, String expiresAt, String accessToken) {
         final String cookieSource = String.join(":", userId, expiresAt, accessToken);
@@ -271,18 +216,20 @@ public class MainVerticle extends SyncVerticle {
     @Suspendable
     private Supplier<HttpRequest<Buffer>> doDataBaseGet(String requestPath) {
         //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
-        return () -> webClient.getAbs(DB_URL + requestPath)
+        JsonObject dbConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("db");
+        return () -> webClient.getAbs("https://"+dbConfig.getString("host") + requestPath)
                 .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
-                .putHeader(HttpHeaders.AUTHORIZATION.toString(), BASIC_AUTH_HEADER)
+                .putHeader(HttpHeaders.AUTHORIZATION.toString(), dbConfig.getString("auth_header"))
                 .ssl(true);
     }
 
     @Suspendable
     private JsonObject doDataBasePost(String requestPath, JsonObject requestBody) {
         //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
-        final HttpRequest<Buffer> httpRequest = webClient.postAbs(DB_URL + requestPath)
+        JsonObject dbConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("db");
+        final HttpRequest<Buffer> httpRequest = webClient.postAbs("https://"+dbConfig.getString("host") + requestPath)
                 .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
-                .putHeader(HttpHeaders.AUTHORIZATION.toString(), BASIC_AUTH_HEADER)
+                .putHeader(HttpHeaders.AUTHORIZATION.toString(), dbConfig.getString("auth_header"))
                 .ssl(true);
         HttpResponse<Buffer> response = awaitResult(h -> httpRequest.sendJsonObject(requestBody, h));
         return response.bodyAsJsonObject();
