@@ -2,8 +2,6 @@ package org.idle.scheduler;
 
 import co.paralleluniverse.fibers.Suspendable;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.util.internal.StringUtil;
-import io.vertx.config.ConfigRetriever;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
@@ -11,9 +9,6 @@ import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.User;
-import io.vertx.ext.auth.oauth2.OAuth2Auth;
-import io.vertx.ext.auth.oauth2.providers.GoogleAuth;
 import io.vertx.ext.sync.Sync;
 import io.vertx.ext.sync.SyncVerticle;
 import io.vertx.ext.web.Cookie;
@@ -24,20 +19,19 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.handler.*;
+import org.idle.scheduler.auth.AuthenticationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.util.UUID;
 import java.util.function.Supplier;
 
 import static io.vertx.ext.sync.Sync.awaitResult;
-import org.idle.scheduler.auth.AuthenticationService;
 
 public class MainVerticle extends SyncVerticle {
 
     private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
-//    private static final String DB_URL = "https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com";
+    //    private static final String DB_URL = "https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com";
 //    private static final String BASIC_AUTH_HEADER = "Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==";
     private WebClient webClient;
     //    private MongoClient mongoClient;
@@ -136,7 +130,7 @@ public class MainVerticle extends SyncVerticle {
         routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(docs.encode());
     }
 
-//    @Suspendable
+    //    @Suspendable
 //    private void getEntityById(RoutingContext routingContext) {
 //        final JsonObject query = new JsonObject()
 //                .put("_id", routingContext.pathParam("id"));
@@ -169,6 +163,7 @@ public class MainVerticle extends SyncVerticle {
             if (cookie != null) {
                 String decryptedCookie = cookieCipher.decryptCookie(cookie.getValue());
                 routingContext.put("userId", decryptedCookie.split(":")[0]);
+                logger.info("encryptedCookie: {} ", cookie.getValue());
                 logger.info("decryptedCookie: {} ", decryptedCookie);
             }
             routingContext.next();
@@ -180,6 +175,10 @@ public class MainVerticle extends SyncVerticle {
         logger.info("startGoogleAuth".toUpperCase());
         final String authorizationUri = AuthenticationService.getInstance().genereteRedirectAuthorizationUrl();
         logger.info("Auth authorization_uri: {}", authorizationUri);
+        Cookie oldCookie = routingContext.removeCookie("room-scheduler");
+        if (oldCookie != null)
+            oldCookie.setMaxAge(0L);
+
         routingContext.response()
                 .putHeader("Location", authorizationUri)
                 .setStatusCode(302)
@@ -194,9 +193,7 @@ public class MainVerticle extends SyncVerticle {
         final String userId = userInfo.getString("sub");
         final long expiresAt = principal.getLong("expires_at", 0L);
         logger.info("UserInfo: {}", Json.encodePrettily(userInfo));
-        Cookie oldCookie = routingContext.removeCookie("room-scheduler");
         Cookie cookie = createCookie(userId, Long.toString(expiresAt), principal.getString("access_token"));
-        oldCookie.setValue(cookie.getValue());
         routingContext.addCookie(cookie);
 
         redirectToHome(routingContext);
@@ -217,7 +214,7 @@ public class MainVerticle extends SyncVerticle {
     private Supplier<HttpRequest<Buffer>> doDataBaseGet(String requestPath) {
         //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
         JsonObject dbConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("db");
-        return () -> webClient.getAbs("https://"+dbConfig.getString("host") + requestPath)
+        return () -> webClient.getAbs("https://" + dbConfig.getString("host") + requestPath)
                 .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
                 .putHeader(HttpHeaders.AUTHORIZATION.toString(), dbConfig.getString("auth_header"))
                 .ssl(true);
@@ -227,7 +224,7 @@ public class MainVerticle extends SyncVerticle {
     private JsonObject doDataBasePost(String requestPath, JsonObject requestBody) {
         //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
         JsonObject dbConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("db");
-        final HttpRequest<Buffer> httpRequest = webClient.postAbs("https://"+dbConfig.getString("host") + requestPath)
+        final HttpRequest<Buffer> httpRequest = webClient.postAbs("https://" + dbConfig.getString("host") + requestPath)
                 .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
                 .putHeader(HttpHeaders.AUTHORIZATION.toString(), dbConfig.getString("auth_header"))
                 .ssl(true);
