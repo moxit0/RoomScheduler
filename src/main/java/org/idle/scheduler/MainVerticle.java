@@ -77,11 +77,11 @@ public class MainVerticle extends SyncVerticle {
         router.route().handler(BodyHandler.create());
 
         router.route().failureHandler(ErrorHandler.create());
-        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
+//        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
         router.get("/room-scheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
-        router.get("/room-scheduler/api/entities").handler(Sync.fiberHandler(this::getAllEntities));
+        router.get("/room-scheduler/api/events").handler(Sync.fiberHandler(this::getAllEntities));
 //        router.get("/room-scheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
-        router.put("/room-scheduler/api/entities").handler(Sync.fiberHandler(this::saveNewEntity));
+        router.post("/room-scheduler/api/events").handler(Sync.fiberHandler(this::saveNewEntity));
         router.get("/room-scheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
         router.get("/room-scheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
 //        router.route("/*").handler(ctx -> ctx.response().sendFile("webroot/index.html"));
@@ -103,14 +103,16 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void saveNewEntity(RoutingContext routingContext) {
-        String userId = routingContext.get("userId");
+        String userId = "102661047872421691075";
+//        String userId = routingContext.get("userId");
         final JsonObject entry = routingContext.getBodyAsJson();
         entry.put("userId", userId);
-        JsonObject scheduledRoom = entry.getJsonObject("scheduledRoom");
-        Instant startDate = scheduledRoom.getInstant("startDate");
-        Instant endDate = scheduledRoom.getInstant("endDate");
-        scheduledRoom.put("startDate", startDate).put("endDate", endDate);
-        Long ts = startDate.toEpochMilli();
+//        JsonObject scheduledRoom = entry.getJsonObject("scheduledRoom");
+//        Instant startDate = scheduledRoom.getInstant("startDate");
+//        Instant endDate = scheduledRoom.getInstant("endDate");
+//        scheduledRoom.put("startDate", startDate).put("endDate", endDate);
+
+//        Long ts = startDate.toEpochMilli();
 //        long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
         JsonObject docs = doDataBasePost("/roomcheduler", entry);
         logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), Json.encodePrettily(docs));
@@ -120,7 +122,8 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getAllEntities(RoutingContext routingContext) {
-        String userId = routingContext.get("userId");
+//        String userId = routingContext.get("userId");
+        String userId = "102661047872421691075";
         JsonObject queryBody = new JsonObject().put("selector", new JsonObject().put("userId", userId));
         logger.info("queryBody: {}", queryBody.encodePrettily());
 

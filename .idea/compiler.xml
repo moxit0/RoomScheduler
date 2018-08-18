@@ -2,12 +2,19 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <annotationProcessing>
-      <profile name="Maven default annotation processors profile" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
+      <profile name="Annotation profile for RoomScheduler" enabled="true">
+        <sourceOutputDir name="src/main/generated" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <option name="outputDirectory" value="C:\Users\n.petkov\development\RoomScheduler/src/main" />
+        <processor name="io.vertx.serviceproxy.ServiceProxyProcessor" />
         <module name="RoomScheduler" />
       </profile>
     </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="RoomScheduler" options="-AoutputDirectory=C:\Users\n.petkov\development\RoomScheduler/src/main" />
+    </option>
   </component>
 </project>
