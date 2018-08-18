@@ -133,7 +133,7 @@ public class MainVerticle extends SyncVerticle {
         routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(docs.encode());
     }
 
-    //    @Suspendable
+//    @Suspendable
 //    private void getEntityById(RoutingContext routingContext) {
 //        final JsonObject query = new JsonObject()
 //                .put("_id", routingContext.pathParam("id"));
