@@ -84,6 +84,9 @@ public class MainVerticle extends SyncVerticle {
         router.post("/room-scheduler/api/events").handler(Sync.fiberHandler(this::saveNewEntity));
         router.get("/room-scheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
         router.get("/room-scheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
+        router.post("/room-scheduler/api/callback").handler(Sync.fiberHandler(this::auth0callback));
+        router.get("/room-scheduler/api/public").handler(Sync.fiberHandler(this::auth0callback));
+        router.get("/room-scheduler/api/private").handler(Sync.fiberHandler(this::auth0callback));
 //        router.route("/*").handler(ctx -> ctx.response().sendFile("webroot/index.html"));
         router.route("/*").handler(StaticHandler.create()
                 .setIndexPage("index.html").setCachingEnabled(false));
@@ -198,6 +201,15 @@ public class MainVerticle extends SyncVerticle {
         logger.info("UserInfo: {}", Json.encodePrettily(userInfo));
         Cookie cookie = createCookie(userId, Long.toString(expiresAt), principal.getString("access_token"));
         routingContext.addCookie(cookie);
+
+        redirectToHome(routingContext);
+    }
+
+    @Suspendable
+    private void auth0callback(RoutingContext routingContext) {
+        logger.info("auth0callback headers: {}", Json.encodePrettily(routingContext.request().headers().entries()));
+        logger.info("auth0callback params: {}", Json.encodePrettily(routingContext.request().params().entries()));
+        logger.info("auth0callback body: {}", routingContext.getBody());
 
         redirectToHome(routingContext);
     }
