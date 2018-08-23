@@ -2,6 +2,8 @@ package org.idle.scheduler;
 
 import co.paralleluniverse.fibers.Suspendable;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
+import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
@@ -23,7 +25,11 @@ import org.idle.scheduler.auth.AuthenticationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static io.vertx.ext.sync.Sync.awaitResult;
@@ -72,9 +78,12 @@ public class MainVerticle extends SyncVerticle {
                 .allowedHeader("Access-Control-Allow-Credentials")
                 .allowedHeader("Access-Control-Allow-Origin")
                 .allowedHeader("Access-Control-Allow-Headers")
-                .allowedHeader("Content-Type"));
-        router.route().handler(CookieHandler.create());
-        router.route().handler(BodyHandler.create());
+                .allowedHeader("Content-Type"))
+                .failureHandler(ErrorHandler.create(true))
+                .handler(CookieHandler.create())
+                .handler(BodyHandler.create());
+        router.route().consumes(HttpHeaderValues.APPLICATION_JSON.toString());
+        router.route().produces(HttpHeaderValues.APPLICATION_JSON.toString());
 
         router.route().failureHandler(ErrorHandler.create());
 //        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
@@ -85,8 +94,6 @@ public class MainVerticle extends SyncVerticle {
         router.get("/room-scheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
         router.get("/room-scheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
         router.post("/room-scheduler/api/callback").handler(Sync.fiberHandler(this::auth0callback));
-        router.get("/room-scheduler/api/public").handler(Sync.fiberHandler(this::auth0callback));
-        router.get("/room-scheduler/api/private").handler(Sync.fiberHandler(this::auth0callback));
 //        router.route("/*").handler(ctx -> ctx.response().sendFile("webroot/index.html"));
         router.route("/*").handler(StaticHandler.create()
                 .setIndexPage("index.html").setCachingEnabled(false));
@@ -207,9 +214,18 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void auth0callback(RoutingContext routingContext) {
-        logger.info("auth0callback headers: {}", Json.encodePrettily(routingContext.request().headers().entries()));
-        logger.info("auth0callback params: {}", Json.encodePrettily(routingContext.request().params().entries()));
-        logger.info("auth0callback body: {}", routingContext.getBody());
+//        logger.info("auth0callback headers: {}", Json.encodePrettily(routingContext.request().headers().entries()));
+        JsonObject authInfo = new JsonObject();
+        for(Map.Entry<String, String> entry : routingContext.request().params().entries()){
+            authInfo.put(entry.getKey(), entry.getValue());
+        }
+        logger.info("auth0callback params: {}", authInfo.encodePrettily());
+//        Buffer body = routingContext.getBody();
+//        logger.info("auth0callback raw body: {}", body);
+//        JsonObject authInfo = body.toJsonObject();
+//        logger.info("auth0callback json body: {}", authInfo.encodePrettily());
+        logger.info("auth0callback access_token: {}", new JsonArray(Arrays.asList(decodeAuthToken(routingContext.request().getParam("access_token")))));
+        logger.info("auth0callback id_token: {}", new JsonArray(Arrays.asList(decodeAuthToken(routingContext.request().getParam("id_token")))));
 
         redirectToHome(routingContext);
     }
@@ -252,5 +268,32 @@ public class MainVerticle extends SyncVerticle {
         routingContext.response().putHeader(HttpHeaderNames.LOCATION, "/")
                 .setStatusCode(301)
                 .end();
+    }
+
+    private static String base64urlDecode(String str) {
+        return new String(Base64.getUrlDecoder().decode(str.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
+    }
+
+    private static String base64urlEncode(String str) {
+        return new String(Base64.getUrlEncoder().encode(str.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
+    }
+
+    private String[] decodeAuthHeader(String header) {
+        String firstDecode = base64urlDecode(header);
+        String[] segments = firstDecode.split(":");
+        String[] decodedSegments = new String[segments.length];
+        for (int i = 0; i < segments.length; i++) {
+            decodedSegments[i] = base64urlDecode(segments[i]);
+        }
+        return decodedSegments;
+    }
+
+    private String[] decodeAuthToken(String token) {
+        String[] segments = token.split("\\.");
+        String[] decodedSegments = new String[segments.length];
+        for (int i = 0; i < segments.length; i++) {
+            decodedSegments[i] = base64urlDecode(segments[i]);
+        }
+        return decodedSegments;
     }
 }
