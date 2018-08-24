@@ -27,9 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Supplier;
 
 import static io.vertx.ext.sync.Sync.awaitResult;
@@ -220,12 +218,8 @@ public class MainVerticle extends SyncVerticle {
             authInfo.put(entry.getKey(), entry.getValue());
         }
         logger.info("auth0callback params: {}", authInfo.encodePrettily());
-//        Buffer body = routingContext.getBody();
-//        logger.info("auth0callback raw body: {}", body);
-//        JsonObject authInfo = body.toJsonObject();
-//        logger.info("auth0callback json body: {}", authInfo.encodePrettily());
-        logger.info("auth0callback access_token: {}", new JsonArray(Arrays.asList(decodeAuthToken(routingContext.request().getParam("access_token")))));
-        logger.info("auth0callback id_token: {}", new JsonArray(Arrays.asList(decodeAuthToken(routingContext.request().getParam("id_token")))));
+        logger.info("auth0callback access_token: {}", decodeAuthToken(routingContext.request().getParam("access_token")).encodePrettily());
+        logger.info("auth0callback id_token: {}", decodeAuthToken(routingContext.request().getParam("id_token")).encodePrettily());
 
         redirectToHome(routingContext);
     }
@@ -288,12 +282,12 @@ public class MainVerticle extends SyncVerticle {
         return decodedSegments;
     }
 
-    private String[] decodeAuthToken(String token) {
-        String[] segments = token.split("\\.");
-        String[] decodedSegments = new String[segments.length];
+    private JsonArray decodeAuthToken(String token) {
+        final String[] segments = token.split("\\.");
+        final List<String> decodedSegments = new ArrayList<>(segments.length);
         for (int i = 0; i < segments.length; i++) {
-            decodedSegments[i] = base64urlDecode(segments[i]);
+            decodedSegments.add(base64urlDecode(segments[i]));
         }
-        return decodedSegments;
+        return new JsonArray(decodedSegments);
     }
 }
