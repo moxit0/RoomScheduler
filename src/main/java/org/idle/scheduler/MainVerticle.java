@@ -86,12 +86,13 @@ public class MainVerticle extends SyncVerticle {
         router.route().produces(HttpHeaderValues.APPLICATION_JSON.toString());
 
         router.route().failureHandler(ErrorHandler.create());
+        router.get("/signin").handler(Sync.fiberHandler(this::startGoogleAuth));
+//        router.get("/auth/callback").handler(Sync.fiberHandler(this::getGoogleToken));
 //        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
         router.get("/room-scheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
         router.get("/room-scheduler/api/events").handler(Sync.fiberHandler(this::getAllEntities));
 //        router.get("/room-scheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
         router.post("/room-scheduler/api/events").handler(Sync.fiberHandler(this::saveNewEntity));
-        router.get("/room-scheduler/api/googleauth").handler(Sync.fiberHandler(this::startGoogleAuth));
         router.get("/room-scheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
         router.post("/room-scheduler/api/callback").handler(Sync.fiberHandler(this::auth0callback));
 //        router.route("/*").handler(ctx -> ctx.response().sendFile("webroot/index.html"));
