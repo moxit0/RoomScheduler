@@ -4,6 +4,9 @@ applications:
   disk_quota: 256M
   instances: 1
   name: room-scheduler
-  buildpack: https://github.com/cloudfoundry/java-buildpack.git#3.x
+  buildpack: https://github.com/cloudfoundry/java-buildpack.git#v4.15
+  #buildpack: https://github.com/cloudfoundry/java-buildpack.git#3.x
   env:
-    JAVA_OPTS: -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv4Addresses=true
+    JAVA_OPTS: -XX:MaxMetaspaceSize=32M -Xss256K -XX:ReservedCodeCacheSize=32M -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv4Addresses=true
+    #JAVA_OPTS: -XX:MaxMetaspaceSize=64M -Xss32K -XX:ReservedCodeCacheSize=48M -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv4Addresses=true
+    JBP_CONFIG_OPEN_JDK_JRE: '{ jre: { version: 10.0.+ }, memory_calculator: { stack_threads: 200 } }'

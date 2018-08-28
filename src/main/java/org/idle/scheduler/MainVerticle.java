@@ -52,7 +52,7 @@ public class MainVerticle extends AbstractVerticle {
                 webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
                 cookieCipher = new CookieCipher();
 
-                JsonObject webConfig = config().getJsonObject("web");
+                var webConfig = config().getJsonObject("web");
 
                 int httpPort;
                 try {
