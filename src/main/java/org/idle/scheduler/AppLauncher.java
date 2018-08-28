@@ -25,6 +25,7 @@ public class AppLauncher {
 
     private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
 
+    @Suspendable
     public static void main(String[] args) {
         System.setProperty(io.vertx.core.logging.LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, SLF4JLogDelegateFactory.class.getName());
         final Vertx vertx = Vertx.vertx();
@@ -42,6 +43,7 @@ public class AppLauncher {
         });
     }
 
+    @Suspendable
     private static void readConfig(Vertx vertx) {
         try {
 //            final Properties applicationProperties = new Properties();
@@ -62,7 +64,7 @@ public class AppLauncher {
 //            localMap.putAll(db.getMap());
             localMap.put("web", configContent.getJsonObject("web", new JsonObject()));
             localMap.put("db", configContent.getJsonObject("db", new JsonObject()));
-            System.out.println(vertx.sharedData().getLocalMap("config"));
+            logger.info("Fetch config: {}", Json.encodePrettily(localMap));
 
         } catch (Exception e) {
             e.printStackTrace();

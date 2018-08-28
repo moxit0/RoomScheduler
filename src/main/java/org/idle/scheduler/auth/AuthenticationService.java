@@ -33,7 +33,9 @@ public final class AuthenticationService {
 
     private AuthenticationService() {
         JsonObject webConfig = (JsonObject) Vertx.currentContext().owner().sharedData().getLocalMap("config").get("web");
-        this.oauth2Provider = (OAuth2AuthProviderImpl) GoogleAuth.create(Vertx.currentContext().owner(), webConfig.getString("client_id"), webConfig.getString("client_secret"));
+        logger.info("Web config: {}", webConfig.encodePrettily());
+        this.oauth2Provider = (OAuth2AuthProviderImpl) GoogleAuth.create(Vertx.currentContext().owner(),
+                webConfig.getString("client_id"), webConfig.getString("client_secret"));
         final boolean deployedOnCloud = System.getenv("PORT") != null;
         if (deployedOnCloud) {
             oauthCallbackUrl = webConfig.getJsonArray("redirect_uris").getString(1);
@@ -48,7 +50,6 @@ public final class AuthenticationService {
     }
 
     private static class AuthenticationServiceHolder {
-
         private static final AuthenticationService INSTANCE = new AuthenticationService();
     }
 

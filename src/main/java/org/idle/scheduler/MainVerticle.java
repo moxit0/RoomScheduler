@@ -3,6 +3,7 @@ package org.idle.scheduler;
 import co.paralleluniverse.fibers.Suspendable;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.codegen.annotations.Nullable;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
@@ -66,38 +67,43 @@ public class MainVerticle extends SyncVerticle {
             httpPort = 8080;
             logger.warn("Environment variable PORT not found or not valid. Defautling to: {}", httpPort);
         }
-        HttpServer server = vertx.createHttpServer();
         Router router = Router.router(vertx);
         router.route().handler(CorsHandler.create("*")
                 .allowedMethod(HttpMethod.GET)
                 .allowedMethod(HttpMethod.POST)
+                .allowedMethod(HttpMethod.PUT)
+                .allowedMethod(HttpMethod.DELETE)
                 .allowedMethod(HttpMethod.OPTIONS)
-                .allowedHeader("Access-Control-Request-Method")
-                .allowedHeader("Access-Control-Allow-Credentials")
-                .allowedHeader("Access-Control-Allow-Origin")
-                .allowedHeader("Access-Control-Allow-Headers")
-                .allowedHeader("Content-Type"))
-                .failureHandler(ErrorHandler.create(true))
-                .handler(CookieHandler.create())
-                .handler(BodyHandler.create());
+                .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS.toString())
+                .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS.toString())
+                .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN.toString())
+                .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS.toString())
+                .allowedHeader(HttpHeaderNames.AUTHORIZATION.toString())
+                .allowedHeader(HttpHeaderNames.CONTENT_TYPE.toString())
+                .allowedHeader(HttpHeaderNames.CACHE_CONTROL.toString()));
+        router.route().failureHandler(ErrorHandler.create(true));
+        router.route().handler(CookieHandler.create());
+        router.route().handler(BodyHandler.create());
         router.route().consumes(HttpHeaderValues.APPLICATION_JSON.toString());
         router.route().produces(HttpHeaderValues.APPLICATION_JSON.toString());
+
 
         router.route().failureHandler(ErrorHandler.create());
         router.get("/signin").handler(Sync.fiberHandler(this::startGoogleAuth));
 //        router.get("/auth/callback").handler(Sync.fiberHandler(this::getGoogleToken));
 //        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
+        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::verifyAuth));
         router.get("/room-scheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
         router.get("/room-scheduler/api/events").handler(Sync.fiberHandler(this::getAllEntities));
 //        router.get("/room-scheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
         router.post("/room-scheduler/api/events").handler(Sync.fiberHandler(this::saveNewEntity));
         router.get("/room-scheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
-        router.post("/room-scheduler/api/callback").handler(Sync.fiberHandler(this::auth0callback));
 //        router.route("/*").handler(ctx -> ctx.response().sendFile("webroot/index.html"));
         router.route("/*").handler(StaticHandler.create()
                 .setIndexPage("index.html").setCachingEnabled(false));
 
         // HttpServer will be automatically shared if port matches
+        HttpServer server = vertx.createHttpServer();
         server.requestHandler(router::accept).listen(httpPort);
         webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
         cookieCipher = new CookieCipher();
@@ -112,8 +118,8 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void saveNewEntity(RoutingContext routingContext) {
-        String userId = "102661047872421691075";
-//        String userId = routingContext.get("userId");
+//        String userId = "102661047872421691075";
+        String userId = routingContext.get("userId");
         final JsonObject entry = routingContext.getBodyAsJson();
         entry.put("userId", userId);
 //        JsonObject scheduledRoom = entry.getJsonObject("scheduledRoom");
@@ -131,8 +137,8 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void getAllEntities(RoutingContext routingContext) {
-//        String userId = routingContext.get("userId");
-        String userId = "102661047872421691075";
+        String userId = routingContext.get("userId");
+//        String userId = "102661047872421691075";
         JsonObject queryBody = new JsonObject().put("selector", new JsonObject().put("userId", userId));
         logger.info("queryBody: {}", queryBody.encodePrettily());
 
@@ -184,17 +190,21 @@ public class MainVerticle extends SyncVerticle {
 
     @Suspendable
     private void startGoogleAuth(RoutingContext routingContext) {
-        logger.info("startGoogleAuth".toUpperCase());
-        final String authorizationUri = AuthenticationService.getInstance().genereteRedirectAuthorizationUrl();
-        logger.info("Auth authorization_uri: {}", authorizationUri);
-        Cookie oldCookie = routingContext.removeCookie("room-scheduler");
-        if (oldCookie != null)
-            oldCookie.setMaxAge(0L);
+        try {
+            logger.info("startGoogleAuth".toUpperCase());
+            final String authorizationUri = AuthenticationService.getInstance().genereteRedirectAuthorizationUrl();
+            logger.info("Auth authorization_uri: {}", authorizationUri);
+            Cookie oldCookie = routingContext.removeCookie("room-scheduler");
+            if (oldCookie != null)
+                oldCookie.setMaxAge(0L);
 
-        routingContext.response()
-                .putHeader("Location", authorizationUri)
-                .setStatusCode(302)
-                .end();
+            routingContext.response()
+                    .putHeader("Location", authorizationUri)
+                    .setStatusCode(302)
+                    .end();
+        }catch (Throwable e){
+            logger.error("EEEE:", e);
+        }
     }
 
     @Suspendable
@@ -207,20 +217,6 @@ public class MainVerticle extends SyncVerticle {
         logger.info("UserInfo: {}", Json.encodePrettily(userInfo));
         Cookie cookie = createCookie(userId, Long.toString(expiresAt), principal.getString("access_token"));
         routingContext.addCookie(cookie);
-
-        redirectToHome(routingContext);
-    }
-
-    @Suspendable
-    private void auth0callback(RoutingContext routingContext) {
-//        logger.info("auth0callback headers: {}", Json.encodePrettily(routingContext.request().headers().entries()));
-        JsonObject authInfo = new JsonObject();
-        for(Map.Entry<String, String> entry : routingContext.request().params().entries()){
-            authInfo.put(entry.getKey(), entry.getValue());
-        }
-        logger.info("auth0callback params: {}", authInfo.encodePrettily());
-        logger.info("auth0callback access_token: {}", decodeAuthToken(routingContext.request().getParam("access_token")).encodePrettily());
-        logger.info("auth0callback id_token: {}", decodeAuthToken(routingContext.request().getParam("id_token")).encodePrettily());
 
         redirectToHome(routingContext);
     }
@@ -263,6 +259,33 @@ public class MainVerticle extends SyncVerticle {
         routingContext.response().putHeader(HttpHeaderNames.LOCATION, "/")
                 .setStatusCode(301)
                 .end();
+    }
+
+    @Suspendable
+    private void apiNotAuthorized(RoutingContext ctx, String msg) {
+        ctx.response()
+                .setStatusMessage(HttpResponseStatus.UNAUTHORIZED.reasonPhrase())
+                .setStatusCode(HttpResponseStatus.UNAUTHORIZED.code())
+                .end(new JsonObject()
+                        .put("success", false)
+                        .put("error", msg).encode());
+    }
+
+    @Suspendable
+    private void verifyAuth(RoutingContext ctx) {
+        String authHeader = ctx.request().getHeader("Authorization");
+        if (authHeader != null) {
+            authHeader = authHeader.replaceFirst("Bearer ", "");
+            String decryptedCookie = cookieCipher.decryptCookie(authHeader);
+            ctx.put("userId", decryptedCookie.split(":")[0]);
+            logger.info("encryptedCookie: {} ", authHeader);
+            logger.info("decryptedCookie: {} ", decryptedCookie);
+//            logger.info("AuthHeader: {}", authHeader);
+//            String[] decodedAuthSegments = decodeAuthHeader(authHeader);
+            ctx.next();
+        } else {
+            apiNotAuthorized(ctx, "Not authorized");
+        }
     }
 
     private static String base64urlDecode(String str) {

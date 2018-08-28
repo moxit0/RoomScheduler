@@ -6,6 +6,4 @@ applications:
   name: room-scheduler
   buildpack: https://github.com/cloudfoundry/java-buildpack.git#3.x
   env:
-    JAVA_OPTS: -javaagent:quasar-core-0.7.5-jdk8.jar "-Djava.net.preferIPv4Stack=true -Djava.net.preferIPv4Addresses=true"
-
-#Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==
+    JAVA_OPTS: -javaagent:quasar-core-0.7.5-jdk8.jar -Djava.net.preferIPv4Stack=true -Djava.net.preferIPv4Addresses=true
