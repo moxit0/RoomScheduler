@@ -1,6 +1,5 @@
 package org.idle.scheduler;
 
-import co.paralleluniverse.fibers.Suspendable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +51,6 @@ public class CookieCipher {
         return source.replaceAll("\u0000", "");
     }
 
-    @Suspendable
     public String encryptCookie(String source) {
         logger.info("cookie source: {}", source);
         String encryped = null;
@@ -68,7 +66,6 @@ public class CookieCipher {
         return encryped;
     }
 
-    @Suspendable
     public String decryptCookie(String cookieValue) {
         String decrypted = null;
         try {

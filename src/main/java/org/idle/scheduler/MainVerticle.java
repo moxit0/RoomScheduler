@@ -1,10 +1,13 @@
 package org.idle.scheduler;
 
-import co.paralleluniverse.fibers.Suspendable;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.vertx.codegen.annotations.Nullable;
+import io.vertx.config.ConfigRetriever;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
@@ -12,111 +15,118 @@ import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.sync.Sync;
-import io.vertx.ext.sync.SyncVerticle;
 import io.vertx.ext.web.Cookie;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.HttpRequest;
-import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.ext.web.handler.*;
 import org.idle.scheduler.auth.AuthenticationService;
+import org.idle.scheduler.auth.AuthenticationVerticle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.*;
-import java.util.function.Supplier;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
 
-import static io.vertx.ext.sync.Sync.awaitResult;
 
-public class MainVerticle extends SyncVerticle {
+public class MainVerticle extends AbstractVerticle {
 
     private static final Logger logger = LoggerFactory.getLogger(MainVerticle.class);
     //    private static final String DB_URL = "https://d139e57f-9b16-4c30-9e71-579bbf66993f-bluemix.cloudant.com";
 //    private static final String BASIC_AUTH_HEADER = "Basic ZDEzOWU1N2YtOWIxNi00YzMwLTllNzEtNTc5YmJmNjY5OTNmLWJsdWVtaXg6NjQwZmM3OGJlZjhlZDY3ZGEyZTQzM2ZkNjBmMTg5ZjFiMDU3ZjUxZmE4NDUwZWZiNGNmM2ViNjNkMThlYzliMg==";
     private WebClient webClient;
-    //    private MongoClient mongoClient;
-//    private RedisClient redisClient;
     private CookieCipher cookieCipher;
+    private AuthenticationService authenticationService;
 
     @Override
-    @Suspendable
-    public void start() {
-//        final ConfigRetriever retriever = ConfigRetriever.create(vertx);
-//        retriever.getConfig(h -> {
-//            if (h.succeeded()) {
-//                JsonObject result = h.result();
-//                config().mergeIn(result.getJsonObject("web"));
-        JsonObject webConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("web");
-        int httpPort;
-        try {
-            //check if some cloud cpecific environment is present
-            boolean deployedOnCloud = System.getenv("PORT") != null;
-            if (deployedOnCloud) {
-                httpPort = Integer.parseInt(System.getenv("PORT"));
-            } else {
-                httpPort = webConfig.getInteger("httpPort");
-            }
-            logger.info("Deployed with port: {}", httpPort);
+    public void start(Future<Void> startFuture) {
+        final ConfigRetriever retriever = ConfigRetriever.create(vertx);
+        retriever.getConfig(h -> {
+            if (h.succeeded()) {
+                config().mergeIn(h.result());
+//                logger.info("config(): {}", config().encodePrettily());
+                webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
+                cookieCipher = new CookieCipher();
 
-        } catch (Exception e) {
-            httpPort = 8080;
-            logger.warn("Environment variable PORT not found or not valid. Defautling to: {}", httpPort);
-        }
-        Router router = Router.router(vertx);
-        router.route().handler(CorsHandler.create("*")
-                .allowedMethod(HttpMethod.GET)
-                .allowedMethod(HttpMethod.POST)
-                .allowedMethod(HttpMethod.PUT)
-                .allowedMethod(HttpMethod.DELETE)
-                .allowedMethod(HttpMethod.OPTIONS)
-                .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS.toString())
-                .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS.toString())
-                .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN.toString())
-                .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS.toString())
-                .allowedHeader(HttpHeaderNames.AUTHORIZATION.toString())
-                .allowedHeader(HttpHeaderNames.CONTENT_TYPE.toString())
-                .allowedHeader(HttpHeaderNames.CACHE_CONTROL.toString()));
-        router.route().failureHandler(ErrorHandler.create(true));
-        router.route().handler(CookieHandler.create());
-        router.route().handler(BodyHandler.create());
-        router.route().consumes(HttpHeaderValues.APPLICATION_JSON.toString());
-        router.route().produces(HttpHeaderValues.APPLICATION_JSON.toString());
+                JsonObject webConfig = config().getJsonObject("web");
+
+                int httpPort;
+                try {
+                    //check if some cloud cpecific environment is present
+                    boolean deployedOnCloud = System.getenv("PORT") != null;
+                    if (deployedOnCloud) {
+                        httpPort = Integer.parseInt(System.getenv("PORT"));
+                    } else {
+                        httpPort = webConfig.getInteger("httpPort");
+                    }
+                    logger.info("Deployed with port: {}", httpPort);
+
+                } catch (Exception e) {
+                    httpPort = 8080;
+                    logger.warn("Environment variable PORT not found or not valid. Defautling to: {}", httpPort);
+                }
+                authenticationService = AuthenticationService.createProxy(vertx, AuthenticationVerticle.EB_ADDRESS);
+
+                Router router = Router.router(vertx);
+                router.route().handler(CorsHandler.create("*")
+                        .allowedMethod(HttpMethod.GET)
+                        .allowedMethod(HttpMethod.POST)
+                        .allowedMethod(HttpMethod.PUT)
+                        .allowedMethod(HttpMethod.DELETE)
+                        .allowedMethod(HttpMethod.OPTIONS)
+                        .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS.toString())
+                        .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS.toString())
+                        .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN.toString())
+                        .allowedHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS.toString())
+                        .allowedHeader(HttpHeaderNames.AUTHORIZATION.toString())
+                        .allowedHeader(HttpHeaderNames.CONTENT_TYPE.toString())
+                        .allowedHeader(HttpHeaderNames.CACHE_CONTROL.toString()));
+                router.route().failureHandler(ErrorHandler.create(true));
+                router.route().handler(CookieHandler.create());
+                router.route().handler(BodyHandler.create());
+                router.route().consumes(HttpHeaderValues.APPLICATION_JSON.toString());
+                router.route().produces(HttpHeaderValues.APPLICATION_JSON.toString());
 
 
-        router.route().failureHandler(ErrorHandler.create());
-        router.get("/signin").handler(Sync.fiberHandler(this::startGoogleAuth));
+                router.route().failureHandler(ErrorHandler.create());
+                router.route("/app/*").handler(this::verifyAuth);
+                // Our front end API:
+                router.get("/signin").handler(this::startGoogleAuth);
+                router.get("/auth/callback").handler(this::getGoogleToken);
 //        router.get("/auth/callback").handler(Sync.fiberHandler(this::getGoogleToken));
 //        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
-        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::verifyAuth));
-        router.get("/room-scheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
-        router.get("/room-scheduler/api/events").handler(Sync.fiberHandler(this::getAllEntities));
+                router.routeWithRegex("/api\\/.*").handler(this::verifyAuth);
+                router.get("/api/getWebContent").handler(this::getWebContent);
+                router.get("/api/events").handler(this::getAllEntities);
 //        router.get("/room-scheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
-        router.post("/room-scheduler/api/events").handler(Sync.fiberHandler(this::saveNewEntity));
-        router.get("/room-scheduler/api/googletoken").handler(Sync.fiberHandler(this::getGoogleToken));
+                router.post("/api/events").handler(this::saveNewEntity);
+//                router.get("/room-scheduler/api/googletoken").handler(this::getGoogleToken);
 //        router.route("/*").handler(ctx -> ctx.response().sendFile("webroot/index.html"));
-        router.route("/*").handler(StaticHandler.create()
-                .setIndexPage("index.html").setCachingEnabled(false));
+                router.route("/*").handler(StaticHandler.create()
+                        .setIndexPage("index.html").setCachingEnabled(false));
 
-        // HttpServer will be automatically shared if port matches
-        HttpServer server = vertx.createHttpServer();
-        server.requestHandler(router::accept).listen(httpPort);
-        webClient = WebClient.create(vertx, new WebClientOptions().setSsl(true));
-        cookieCipher = new CookieCipher();
-
-//                JsonObject userInfo = awaitResult(uh -> authenticationService.authenticate("", fiberHandler(uh)));
-//                logger.info("UserInfo: {}", Json.encodePrettily(userInfo));
-//            } else {
-//                logger.error(" ConfigRetriever failed: {}", h.cause());
-//            }
-//        });
+                // HttpServer will be automatically shared if port matches
+                HttpServer server = vertx.createHttpServer();
+                server.requestHandler(router::accept)
+                        .listen(httpPort, ar -> {
+                            if (ar.succeeded()) {
+                                startFuture.complete();
+                            } else {
+                                logger.error("Could not start a HTTP server", ar.cause());
+                                startFuture.fail(ar.cause());
+                            }
+                        });
+            } else {
+                logger.error(" ConfigRetriever failed: {}", h.cause());
+                startFuture.fail(h.cause());
+            }
+        });
     }
 
-    @Suspendable
     private void saveNewEntity(RoutingContext routingContext) {
 //        String userId = "102661047872421691075";
         String userId = routingContext.get("userId");
@@ -127,28 +137,49 @@ public class MainVerticle extends SyncVerticle {
 //        Instant endDate = scheduledRoom.getInstant("endDate");
 //        scheduledRoom.put("startDate", startDate).put("endDate", endDate);
 
-//        Long ts = startDate.toEpochMilli();
-//        long result = awaitResult(h -> redisClient.zadd("user:entry:" + userId, ts, entry.encodePrettily(), h));
-        JsonObject docs = doDataBasePost("/roomcheduler", entry);
-        logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), Json.encodePrettily(docs));
-
-        routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(entry.encode());
+        doDataBasePost("/roomcheduler", entry, h -> {
+            if (h.succeeded()) {
+                JsonObject docs = h.result();
+                logger.info("saveEntity: {},\n result: {}", entry.encodePrettily(), Json.encodePrettily(docs));
+                routingContext.response()
+                        .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+                        .end(entry.encode());
+            } else {
+                final String msg = "Something went wrong !!!";
+                logger.error(msg, h.cause());
+                routingContext.response()
+                        .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+                        .setStatusCode(500)
+                        .end(msg);
+            }
+        });
     }
 
-    @Suspendable
     private void getAllEntities(RoutingContext routingContext) {
         String userId = routingContext.get("userId");
 //        String userId = "102661047872421691075";
         JsonObject queryBody = new JsonObject().put("selector", new JsonObject().put("userId", userId));
         logger.info("queryBody: {}", queryBody.encodePrettily());
 
-        JsonObject dbResponse = doDataBasePost("/roomcheduler/_find", queryBody);
-        JsonArray docs = dbResponse.getJsonArray("docs", new JsonArray());
-        logger.info("getAllEntities: {}", docs.encodePrettily());
-        routingContext.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json").end(docs.encode());
+        doDataBasePost("/roomcheduler/_find", queryBody, h -> {
+            if (h.succeeded()) {
+                JsonArray docs = h.result().getJsonArray("docs", new JsonArray());
+                logger.info("getAllEntities: {}", docs.encodePrettily());
+                routingContext.response()
+                        .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+                        .end(docs.encode());
+            } else {
+                final String msg = "Something went wrong !!!";
+                logger.error(msg, h.cause());
+                routingContext.response()
+                        .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+                        .setStatusCode(500)
+                        .end(msg);
+            }
+        });
     }
 
-//    @Suspendable
+    //    @Suspendable
 //    private void getEntityById(RoutingContext routingContext) {
 //        final JsonObject query = new JsonObject()
 //                .put("_id", routingContext.pathParam("id"));
@@ -156,7 +187,6 @@ public class MainVerticle extends SyncVerticle {
 //        routingContext.response()
 //                .end(Json.encodePrettily(entity));
 //    }
-    @Suspendable
     private void getWebContent(RoutingContext routingContext) {
 //        HttpRequest<Buffer> httpRequest = doDataBaseGet("/roomcheduler/28e0e33d90130fd469f2a2d2028122d0").get();
 //        HttpResponse<Buffer> response = awaitResult(httpRequest::send);
@@ -168,7 +198,6 @@ public class MainVerticle extends SyncVerticle {
                 .end();
     }
 
-    @Suspendable
     private void authenticate(RoutingContext routingContext) {
         Cookie cookie = routingContext.getCookie("room-scheduler");
         String requestPath = routingContext.request().path();
@@ -188,11 +217,10 @@ public class MainVerticle extends SyncVerticle {
         }
     }
 
-    @Suspendable
     private void startGoogleAuth(RoutingContext routingContext) {
-        try {
-            logger.info("startGoogleAuth".toUpperCase());
-            final String authorizationUri = AuthenticationService.getInstance().genereteRedirectAuthorizationUrl();
+        logger.info("startGoogleAuth".toUpperCase());
+        authenticationService.genereteRedirectAuthorizationUrl(h -> {
+            final String authorizationUri = h.result();
             logger.info("Auth authorization_uri: {}", authorizationUri);
             Cookie oldCookie = routingContext.removeCookie("room-scheduler");
             if (oldCookie != null)
@@ -202,26 +230,38 @@ public class MainVerticle extends SyncVerticle {
                     .putHeader("Location", authorizationUri)
                     .setStatusCode(302)
                     .end();
-        }catch (Throwable e){
-            logger.error("EEEE:", e);
+        });
+    }
+
+    private void getGoogleToken(RoutingContext routingContext) {
+        logger.info("getGoogleToken".toUpperCase());
+        try {
+            authenticationService.authenticate(routingContext.request().getParam("code"), uh -> {
+                if (uh.succeeded()) {
+                    JsonObject userInfo = uh.result();
+                    logger.info("UserInfo: {}", Json.encodePrettily(userInfo));
+                    JsonObject principal = userInfo.getJsonObject("principal");
+                    final String userId = userInfo.getString("sub");
+                    final long expiresAt = principal.getLong("expires_at", 0L);
+                    logger.info("UserInfo: {}", Json.encodePrettily(userInfo));
+                    Cookie cookie = createCookie(userId, Long.toString(expiresAt), principal.getString("access_token"));
+                    routingContext.addCookie(cookie);
+
+                    redirectToHome(routingContext);
+
+                } else {
+                    logger.error("Authentication failed: ", uh.cause());
+                    redirectToHome(routingContext);
+                }
+            });
+        } catch (Exception e) {
+            logger.error("Something went wrong:", e);
+            routingContext.response()
+                    .setStatusCode(500)
+                    .end("Something went wrong");
         }
     }
 
-    @Suspendable
-    private void getGoogleToken(RoutingContext routingContext) {
-        logger.info("getGoogleToken".toUpperCase());
-        JsonObject userInfo = AuthenticationService.getInstance().authenticate(routingContext.request().getParam("code"));
-        JsonObject principal = userInfo.getJsonObject("principal");
-        final String userId = userInfo.getString("sub");
-        final long expiresAt = principal.getLong("expires_at", 0L);
-        logger.info("UserInfo: {}", Json.encodePrettily(userInfo));
-        Cookie cookie = createCookie(userId, Long.toString(expiresAt), principal.getString("access_token"));
-        routingContext.addCookie(cookie);
-
-        redirectToHome(routingContext);
-    }
-
-    @Suspendable
     private Cookie createCookie(String userId, String expiresAt, String accessToken) {
         final String cookieSource = String.join(":", userId, expiresAt, accessToken);
         String encryptedCookie = cookieCipher.encryptCookie(cookieSource);
@@ -232,36 +272,44 @@ public class MainVerticle extends SyncVerticle {
         return cookie;
     }
 
-    @Suspendable
-    private Supplier<HttpRequest<Buffer>> doDataBaseGet(String requestPath) {
+    private void doDataBaseGet(String requestPath, Handler<AsyncResult<JsonObject>> resultHandler) {
         //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
         JsonObject dbConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("db");
-        return () -> webClient.getAbs("https://" + dbConfig.getString("host") + requestPath)
+        HttpRequest<Buffer> httpRequest = webClient.getAbs("https://" + dbConfig.getString("host") + requestPath)
                 .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
                 .putHeader(HttpHeaders.AUTHORIZATION.toString(), dbConfig.getString("auth_header"))
                 .ssl(true);
+        httpRequest.send(h -> {
+            if (h.succeeded()) {
+                resultHandler.handle(Future.succeededFuture(h.result().bodyAsJsonObject()));
+            } else {
+                resultHandler.handle(Future.failedFuture(h.cause()));
+            }
+        });
     }
 
-    @Suspendable
-    private JsonObject doDataBasePost(String requestPath, JsonObject requestBody) {
+    private void doDataBasePost(String requestPath, JsonObject requestBody, Handler<AsyncResult<JsonObject>> resultHandler) {
         //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
         JsonObject dbConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("db");
         final HttpRequest<Buffer> httpRequest = webClient.postAbs("https://" + dbConfig.getString("host") + requestPath)
                 .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
                 .putHeader(HttpHeaders.AUTHORIZATION.toString(), dbConfig.getString("auth_header"))
                 .ssl(true);
-        HttpResponse<Buffer> response = awaitResult(h -> httpRequest.sendJsonObject(requestBody, h));
-        return response.bodyAsJsonObject();
+        httpRequest.sendJsonObject(requestBody, h -> {
+            if (h.succeeded()) {
+                resultHandler.handle(Future.succeededFuture(h.result().bodyAsJsonObject()));
+            } else {
+                resultHandler.handle(Future.failedFuture(h.cause()));
+            }
+        });
     }
 
-    @Suspendable
     private void redirectToHome(RoutingContext routingContext) {
         routingContext.response().putHeader(HttpHeaderNames.LOCATION, "/")
                 .setStatusCode(301)
                 .end();
     }
 
-    @Suspendable
     private void apiNotAuthorized(RoutingContext ctx, String msg) {
         ctx.response()
                 .setStatusMessage(HttpResponseStatus.UNAUTHORIZED.reasonPhrase())
@@ -271,7 +319,6 @@ public class MainVerticle extends SyncVerticle {
                         .put("error", msg).encode());
     }
 
-    @Suspendable
     private void verifyAuth(RoutingContext ctx) {
         String authHeader = ctx.request().getHeader("Authorization");
         if (authHeader != null) {
