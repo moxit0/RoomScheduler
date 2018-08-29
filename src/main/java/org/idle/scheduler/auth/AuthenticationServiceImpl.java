@@ -32,7 +32,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         final boolean deployedOnCloud = System.getenv("PORT") != null;
 
         JsonObject webConfig = config.getJsonObject("web");
-//        logger.info("AuthenticationServiceImpl Config: {}", Json.encodePrettily(config));
         this.oauth2Provider = (OAuth2AuthProviderImpl) GoogleAuth.create(Vertx.currentContext().owner(),
                 webConfig.getString("client_id"), webConfig.getString("client_secret"));
         if (deployedOnCloud) {

@@ -85,27 +85,25 @@ public class MainVerticle extends AbstractVerticle {
                         .allowedHeader(HttpHeaderNames.AUTHORIZATION.toString())
                         .allowedHeader(HttpHeaderNames.CONTENT_TYPE.toString())
                         .allowedHeader(HttpHeaderNames.CACHE_CONTROL.toString()));
+
+                router.route().consumes(HttpHeaderValues.APPLICATION_JSON.toString());
+                router.route().produces(HttpHeaderValues.APPLICATION_JSON.toString());
                 router.route().failureHandler(ErrorHandler.create(true));
                 router.route().handler(CookieHandler.create());
                 router.route().handler(BodyHandler.create());
-                router.route().consumes(HttpHeaderValues.APPLICATION_JSON.toString());
-                router.route().produces(HttpHeaderValues.APPLICATION_JSON.toString());
 
 
                 router.route().failureHandler(ErrorHandler.create());
                 router.route("/app/*").handler(this::verifyAuth);
+//                router.routeWithRegex("/app\\/.*").handler(this::verifyAuth);
+
                 // Our front end API:
                 router.get("/signin").handler(this::startGoogleAuth);
                 router.get("/auth/callback").handler(this::getGoogleToken);
-//        router.get("/auth/callback").handler(Sync.fiberHandler(this::getGoogleToken));
-//        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
-                router.routeWithRegex("/api\\/.*").handler(this::verifyAuth);
-                router.get("/api/getWebContent").handler(this::getWebContent);
-                router.get("/api/events").handler(this::getAllEntities);
-//        router.get("/room-scheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
-                router.post("/api/events").handler(this::saveNewEntity);
-//                router.get("/room-scheduler/api/googletoken").handler(this::getGoogleToken);
-//        router.route("/*").handler(ctx -> ctx.response().sendFile("webroot/index.html"));
+                router.get("/app/getWebContent").handler(this::getWebContent);
+                router.get("/app/events").handler(this::getAllEntities);
+//              router.get("/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
+                router.post("/app/events").handler(this::saveNewEntity);
                 router.route("/*").handler(StaticHandler.create()
                         .setIndexPage("index.html").setCachingEnabled(false));
 
@@ -274,7 +272,7 @@ public class MainVerticle extends AbstractVerticle {
 
     private void doDataBaseGet(String requestPath, Handler<AsyncResult<JsonObject>> resultHandler) {
         //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
-        JsonObject dbConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("db");
+        JsonObject dbConfig = config().getJsonObject("db");
         HttpRequest<Buffer> httpRequest = webClient.getAbs("https://" + dbConfig.getString("host") + requestPath)
                 .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
                 .putHeader(HttpHeaders.AUTHORIZATION.toString(), dbConfig.getString("auth_header"))
@@ -290,7 +288,7 @@ public class MainVerticle extends AbstractVerticle {
 
     private void doDataBasePost(String requestPath, JsonObject requestBody, Handler<AsyncResult<JsonObject>> resultHandler) {
         //"/roomcheduler/28e0e33d90130fd469f2a2d2028122d0"
-        JsonObject dbConfig = (JsonObject) vertx.sharedData().getLocalMap("config").get("db");
+        JsonObject dbConfig = config().getJsonObject("db");
         final HttpRequest<Buffer> httpRequest = webClient.postAbs("https://" + dbConfig.getString("host") + requestPath)
                 .putHeader(HttpHeaders.CONTENT_TYPE.toString(), "application/json")
                 .putHeader(HttpHeaders.AUTHORIZATION.toString(), dbConfig.getString("auth_header"))
