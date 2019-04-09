@@ -9,29 +9,29 @@
     <version>1.0</version>
 
     <properties>
-        <vertx.version>3.5.3</vertx.version>
-        <main.verticle>org.idle.scheduler.MainVerticle</main.verticle>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <quasar.version>0.7.5</quasar.version>
+
+        <vertx.version>3.7.0</vertx.version>
+        <maven-compiler-plugin.version>3.8.0</maven-compiler-plugin.version>
+        <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
+        <maven-surefire-plugin.version>2.22.1</maven-surefire-plugin.version>
+        <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
+        <quasar.version>0.8.0</quasar.version>
+        <junit-jupiter.version>5.4.0</junit-jupiter.version>
+
+        <main.verticle>org.idle.scheduler.MainVerticle</main.verticle>
+
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>io.vertx</groupId>
-                <artifactId>vertx-dependencies</artifactId>
+                <artifactId>vertx-stack-depchain</artifactId>
                 <version>${vertx.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-engine -->
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter-engine</artifactId>
-                <version>5.0.3</version>
-                <scope>test</scope>
-            </dependency>
-
         </dependencies>
     </dependencyManagement>
 
@@ -69,12 +69,31 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.8.0-beta2</version>
+            <version>1.8.0-beta4</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>1.8.0-beta2</version>
+            <version>1.8.0-beta4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -83,17 +102,17 @@
             <plugins>
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.7.0</version>
+                    <version>${maven-compiler-plugin.version}</version>
                     <configuration>
-                        <!--<release>10</release>-->
-                        <source>1.8</source>
-                        <target>1.8</target>
+                        <release>11</release>
+                        <!--<source>1.8</source>-->
+                        <!--<target>1.8</target>-->
                         <useIncrementalCompilation>false</useIncrementalCompilation>
 
                         <!-- Codegen -->
                         <annotationProcessors>
-                            <annotationProcessor>io.vertx.serviceproxy.ServiceProxyProcessor</annotationProcessor>
-                            <!--<annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>-->
+                            <!--<annotationProcessor>io.vertx.serviceproxy.ServiceProxyProcessor</annotationProcessor>-->
+                            <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
                         </annotationProcessors>
                         <generatedSourcesDirectory>${project.basedir}/src/main/generated</generatedSourcesDirectory>
                         <compilerArgs>
@@ -105,7 +124,7 @@
 
                 <plugin>
                     <artifactId>maven-clean-plugin</artifactId>
-                    <version>3.0.0</version>
+                    <version>3.1.0</version>
                     <configuration>
                         <filesets>
                             <fileset>
@@ -161,7 +180,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>2.4.3</version>
+                <version>${maven-shade-plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -209,7 +228,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>1.6.0</version>
+                <version>${exec-maven-plugin.version}</version>
                 <configuration>
                     <mainClass>org.idle.scheduler.AppLauncher</mainClass>
                     <workingDirectory>target/classes</workingDirectory>

@@ -92,7 +92,7 @@ public class MainVerticle extends SyncVerticle {
         router.get("/signin").handler(Sync.fiberHandler(this::startGoogleAuth));
 //        router.get("/auth/callback").handler(Sync.fiberHandler(this::getGoogleToken));
 //        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::authenticate));
-        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::verifyAuth));
+//        router.routeWithRegex("/room-scheduler/api\\/.*").handler(Sync.fiberHandler(this::verifyAuth));
         router.get("/room-scheduler/api/getWebContent").handler(Sync.fiberHandler(this::getWebContent));
         router.get("/room-scheduler/api/events").handler(Sync.fiberHandler(this::getAllEntities));
 //        router.get("/room-scheduler/api/entities/:id").handler(Sync.fiberHandler(this::getEntityById));
